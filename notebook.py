@@ -12,9 +12,19 @@ import marimo
 __generated_with = "0.19.6"
 app = marimo.App()
 
+with app.setup:
+    from REWAutomation import REWAutomation
+    from data_handling import Data_Handling
+    from LEA_controls import Lea_Settings
+    from REW_measurements import Measurements
+    import marimo as mo
+    import pathlib as Path
+    # import time
+
+
 
 @app.cell
-def _(mo):
+def _():
     mo.md(r"""
     import statements
     """)
@@ -23,17 +33,6 @@ def _(mo):
 
 @app.cell
 def _():
-    from REWAutomation import REWAutomation
-    from data_handling import Data_Handling
-    from LEA_controls import Lea_Settings
-    from REW_measurements import Measurements
-    import marimo as mo
-    # import time
-    return Data_Handling, Lea_Settings, Measurements, REWAutomation, mo
-
-
-@app.cell
-def _(mo):
     mo.md(r"""
     Initial program setup
     """)
@@ -41,7 +40,7 @@ def _(mo):
 
 
 @app.cell
-def _(Data_Handling, Lea_Settings, Measurements, REWAutomation):
+def _():
     if __name__ == "__main__":
         # instantiate on local host port 4735
 
@@ -92,21 +91,63 @@ def _(Data_Handling, Lea_Settings, Measurements, REWAutomation):
 
 
 @app.cell
-def _(mo):
+def _():
+    file_browser = mo.ui.file_browser(
+        initial_path=r"C:\Users\Seth\Documents\Temporary_Files",
+        multiple=False
+    )
+    file_browser
+    return (file_browser,)
+
+
+@app.cell
+def _(file_browser):
+    fileName = file_browser.path(index=0)
+    path_str = str(fileName).replace("\\", "/")
+    path_str
+
+    return (path_str,)
+
+
+@app.cell
+def _():
+    load_button = mo.ui.run_button(label="Load mdat file")
+    load_button
+    return (load_button,)
+
+
+@app.cell
+def _(load_button, path_str, rewA):
+    if load_button.value:
+        rewA.load_mdat(path_str)
+    else:
+        print("No file loaded")
+    return
+
+
+@app.cell
+def _():
     unitType = mo.ui.text(label="What type of unit is this?:")
     unitType
     return (unitType,)
 
 
 @app.cell
-def _(mo):
+def _():
     unitNumber = mo.ui.text(label="What number unit is this?:")
     unitNumber
     return (unitNumber,)
 
 
 @app.cell
-def _(mo):
+def _():
+    amp_ip_address = mo.ui.text(label="Enter LEA Amplifier IP Address:")
+    amp_ip_address
+    return
+
+
+@app.cell
+def _():
     sine_sweep_button = mo.ui.run_button(label="Sine Sweep")
     stepped_sine_sweep_button = mo.ui.run_button(label="Stepped Sine Sweep")
     sine_sweep_button, stepped_sine_sweep_button
@@ -122,23 +163,24 @@ def _(
     unitType,
 ):
     if sine_sweep_button.value:
-        rewM.sine_sweep(rewM.unitInput(unitType, unitNumber))
+        rewM.sine_sweep(rewM.unitInput(unitType.value, unitNumber.value))
     elif stepped_sine_sweep_button.value:
-        rewM.stepped_sine_sweep(rewM.unitInput(unitType, unitNumber))
+        rewM.stepped_sine_sweep(rewM.unitInput(unitType.value, unitNumber.value))
     else:
-        print('Click a button!')
+        with mo.redirect_stdout():
+            print('Click a button!')
     return
 
 
 @app.cell
-def _(mo):
+def _():
     save_file_name = mo.ui.text(label="What do you want to name the file?:")
     save_file_name
     return (save_file_name,)
 
 
 @app.cell
-def _(mo):
+def _():
     save_button = mo.ui.run_button(label="Save Measurements")
     save_button
     return (save_button,)
@@ -155,8 +197,34 @@ def _(rewA, save_button, save_file_name):
 
 @app.cell
 def _():
-    #rewA.post_command_shutdown()
-    #print("REW is shut down")
+    export_button = mo.ui.button(label="Export as JSON")
+    export_button
+    return (export_button,)
+
+
+@app.cell
+def _(export_button, rewA, save_file_name):
+    if export_button.value:
+        rewA.post_measurements_command_saveall(save_file_name.value)
+    else:
+        print("No files exported")
+    return
+
+
+@app.cell
+def _():
+    exit_REW_button = mo.ui.run_button(label="exit REW?")
+    exit_REW_button
+    return (exit_REW_button,)
+
+
+@app.cell
+def _(exit_REW_button, rewA):
+    if exit_REW_button.value:
+        rewA.post_command_shutdown()
+        print("REW is shut down")
+    else:
+        print("REW is not shut down")
     return
 
 
