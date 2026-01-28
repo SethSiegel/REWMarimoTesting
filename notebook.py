@@ -87,7 +87,7 @@ def _():
             # rewA.post_audio_asio_output(f"{i+1}: Dante tx {i+1}")
         rewA.post_no_overall_average()
         print("Audio drivers set")
-    return rewA, rewM
+    return dataH, rewA, rewM
 
 
 @app.cell
@@ -192,6 +192,36 @@ def _(rewA, save_button, save_file_name):
         rewA.post_measurements_command_saveall(save_file_name.value)
     else:
         print("No file saved")
+    return
+
+
+@app.cell
+def _(rewA):
+    x = rewA.get_measurements()
+    x
+
+    return (x,)
+
+
+@app.cell
+def _(x):
+    res = x.get('1')
+    res
+    return
+
+
+@app.cell
+def _(rewA):
+    response = rewA.get_measurements_id_freq_response('1')
+    rmag = response["magnitude"]
+    rmag
+    return (response,)
+
+
+@app.cell
+def _(dataH, response):
+    decoded_array = dataH.decode_array(response["magnitude"])
+    decoded_array
     return
 
 
