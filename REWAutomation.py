@@ -371,7 +371,7 @@ class REWAutomation():
             N/A
         """
 
-        filepath = f"C://Users/Seth/Documents/Temporary_Files/{filename}.mdat"
+        filepath = f"C://Users/Seth/Documents/rew_marimo_data/{filename}.mdat"
         message = '''These are the saved files from automation prototyping'''
         body = {"command": "Save all",
                 "parameters": [filepath,

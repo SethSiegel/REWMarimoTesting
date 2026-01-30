@@ -1,6 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
+#     "jsonpickle>=4.1.1",
 #     "marimo>=0.19.0",
 #     "pyzmq>=27.1.0",
 #     "requests>=2.32.5",
@@ -20,7 +21,6 @@ with app.setup:
     import marimo as mo
     import pathlib as Path
     # import time
-
 
 
 @app.cell
@@ -87,13 +87,13 @@ def _():
             # rewA.post_audio_asio_output(f"{i+1}: Dante tx {i+1}")
         rewA.post_no_overall_average()
         print("Audio drivers set")
-    return dataH, rewA, rewM
+    return dataH, measurements, rewA, rewM
 
 
 @app.cell
 def _():
     file_browser = mo.ui.file_browser(
-        initial_path=r"C:\Users\Seth\Documents\Temporary_Files",
+        initial_path=r"C:\Users\Seth\Documents\REW_test_data\mdat",
         multiple=False
     )
     file_browser
@@ -105,7 +105,6 @@ def _(file_browser):
     fileName = file_browser.path(index=0)
     path_str = str(fileName).replace("\\", "/")
     path_str
-
     return (path_str,)
 
 
@@ -196,46 +195,109 @@ def _(rewA, save_button, save_file_name):
 
 
 @app.cell
-def _(rewA):
-    x = rewA.get_measurements()
-    x
-
-    return (x,)
+def _():
+    export_json_name = mo.ui.text(label="What do you want to call the exported JSON?:")
+    export_json_name
+    return (export_json_name,)
 
 
 @app.cell
-def _(x):
-    res = x.get('1')
-    res
+def _(dataH, decoded_array, export_json_name, measurement):
+    dataH.make_marimo_json(export_json_name.value, measurement, decoded_array)
+    return
+
+
+@app.cell
+def _(rewA):
+    measurements_all = rewA.get_measurements()
+    measurements_all
+    return (measurements_all,)
+
+
+@app.cell
+def _():
+    measurement_number_to_export = mo.ui.number(label="Which measurement do you want to export as a JSON?:")
+    measurement_number_to_export
+    return (measurement_number_to_export,)
+
+
+@app.cell
+def _(measurement_number_to_export):
+    measNum = str(measurement_number_to_export.value)
+    return (measNum,)
+
+
+@app.cell
+def _(measNum, measurements_all):
+    measurement = measurements_all[measNum]
+    measurement
+    return (measurement,)
+
+
+@app.cell
+def _(measurement):
+    measurement['rewVersion']
     return
 
 
 @app.cell
 def _(rewA):
     response = rewA.get_measurements_id_freq_response('1')
-    rmag = response["magnitude"]
-    rmag
+    rmag = response["phase"]
+    response
     return (response,)
 
 
 @app.cell
-def _(dataH, response):
-    decoded_array = dataH.decode_array(response["magnitude"])
-    decoded_array
+def _():
+    mo.md(r"""
+    #TODO: figure out way to get the right frequency data to store in the json alongside the magnitude data
+    """)
     return
 
 
 @app.cell
-def _():
-    export_button = mo.ui.button(label="Export as JSON")
-    export_button
-    return (export_button,)
+def _(dataH, response):
+    decoded_array = dataH.decode_array(response["phase"])
+    decoded_array
+    return (decoded_array,)
 
 
 @app.cell
-def _(export_button, rewA, save_file_name):
-    if export_button.value:
+def _():
+    export_single_button = mo.ui.button(label="Export single file as JSON")
+    export_all_button = mo.ui.button(label="Export all as JSON")
+    export_single_button, export_all_button
+    return export_all_button, export_single_button
+
+
+@app.cell
+def _():
+    mo.md(r"""
+    #NOTE: add function to save measurements individually and show the measurements in a dropdown list like the files that can be loaded in
+
+    need to fix up the make_json function so that it works better with the response from the webapp and then I can just set it to run in a loop for the number of measurements that are selected to be exported
+    """)
+    return
+
+
+@app.cell
+def _(
+    dataH,
+    decoded_array,
+    export_all_button,
+    export_single_button,
+    freq_array,
+    i,
+    measurements,
+    rewA,
+    save_file_name,
+):
+    if export_all_button.value:
         rewA.post_measurements_command_saveall(save_file_name.value)
+    elif export_single_button.value:
+        dataH.make_json(save_file_name.value, freq_array, decoded_array,
+                        measurements, i)
     else:
         print("No files exported")
     return

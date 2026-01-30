@@ -1,9 +1,12 @@
 import base64
 import struct
 import json
+import jsonpickle
+import os
 
 
 class Data_Handling():
+
     def decode_array(self, base64_encoded):
         """ Function to decode a base64 encoded array
 
@@ -399,6 +402,45 @@ class Data_Handling():
                     }
         with open(filepath + name + '.json', 'w') as outFile:
             json.dump(outDict, outFile, indent=4)
+        return
+
+    def make_marimo_json(self, filename, measurement, decoded_array,
+                         freq_array=None,
+                         filepath: str = "C://Users/seth/Documents/rew_marimo_data"):
+        """ Function to make a .json file from the decoded data
+
+        Args:
+            name (str): the name of the measurement given by user
+            freq_array (list): the frequency data
+            decoded_array (list): the decoded data for SPL data
+            filepath (str): the filepath of the .json file
+
+        Returns:
+            N/A
+        """
+        mea = measurement
+        outDict = {
+                    "filename": filename,
+                    # "Freq(Hz)": freq_array,
+                    "SPL(dB)": decoded_array,
+                    "Meta Data": {
+                                    "REW Version": mea["rewVersion"],
+                                    "Dated": mea["date"],
+                                    "UUID": mea["uuid"],
+                                    "notes": mea["notes"],
+                                    "Measurement": mea["title"],
+                                    "Start Frequency": mea["startFreq"],
+                                    "End Frequency": mea["endFreq"],
+                                    }
+                    }
+
+        file_path = os.path.join(filepath, f"{filename}.json")
+
+        with open(file_path + '.json', 'w') as outFile:
+            outFile.write(
+                jsonpickle.encode(outDict, indent=4)
+            )
+        print(f"writing to: {filepath}")
         return
 
 
