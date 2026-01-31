@@ -406,7 +406,7 @@ class Data_Handling():
 
     def make_marimo_json(self, filename, measurement, decoded_array,
                          freq_array=None,
-                         filepath: str = "C://Users/seth/Documents/rew_marimo_data"):
+                         filepath: str = "/Users/bigmac/Documents/Testing_Chamber_REW_Files/LA/JSON"):
         """ Function to make a .json file from the decoded data
 
         Args:
@@ -436,7 +436,7 @@ class Data_Handling():
 
         file_path = os.path.join(filepath, f"{filename}.json")
 
-        with open(file_path + '.json', 'w') as outFile:
+        with open(file_path, 'w') as outFile:
             outFile.write(
                 jsonpickle.encode(outDict, indent=4)
             )

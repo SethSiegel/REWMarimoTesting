@@ -10,7 +10,7 @@
 
 import marimo
 
-__generated_with = "0.19.6"
+__generated_with = "0.19.7"
 app = marimo.App()
 
 with app.setup:
@@ -20,7 +20,7 @@ with app.setup:
     from REW_measurements import Measurements
     import marimo as mo
     import pathlib as Path
-    # import time
+    import time
 
 
 @app.cell
@@ -87,14 +87,15 @@ def _():
             # rewA.post_audio_asio_output(f"{i+1}: Dante tx {i+1}")
         rewA.post_no_overall_average()
         print("Audio drivers set")
-    return dataH, measurements, rewA, rewM
+    return dataH, rewA, rewM
 
 
 @app.cell
 def _():
     file_browser = mo.ui.file_browser(
-        initial_path=r"C:\Users\Seth\Documents\REW_test_data\mdat",
+        initial_path=r"/Users/bigmac/Documents/Testing_Chamber_REW_Files/LA",
         multiple=False
+        # '/Users/bigmac/Documents/Testing Chamber - REW Files/LA/RX600_354_Benchmark_LA_012126.mdat'
     )
     file_browser
     return (file_browser,)
@@ -109,6 +110,15 @@ def _(file_browser):
 
 
 @app.cell
+def _(load_button, path_str, rewA):
+    if load_button.value:
+        rewA.load_mdat(path_str)
+    else:
+        print("No file loaded")
+    return
+
+
+@app.cell
 def _():
     load_button = mo.ui.run_button(label="Load mdat file")
     load_button
@@ -116,11 +126,8 @@ def _():
 
 
 @app.cell
-def _(load_button, path_str, rewA):
-    if load_button.value:
-        rewA.load_mdat(path_str)
-    else:
-        print("No file loaded")
+def _(load_button):
+    load_button.value
     return
 
 
@@ -202,49 +209,49 @@ def _():
 
 
 @app.cell
-def _(dataH, decoded_array, export_json_name, measurement):
-    dataH.make_marimo_json(export_json_name.value, measurement, decoded_array)
-    return
+def _(load_button, rewA):
 
+    mo.stop(not load_button.value, mo.md("click the button to continue"))
 
-@app.cell
-def _(rewA):
-    measurements_all = rewA.get_measurements()
-    measurements_all
+    time.sleep(3)
+
+    with mo.status.spinner(title="Fetching data..."):
+        measurements_all = rewA.get_measurements()
+
+    # measurements_all
     return (measurements_all,)
 
 
 @app.cell
 def _():
-    measurement_number_to_export = mo.ui.number(label="Which measurement do you want to export as a JSON?:")
-    measurement_number_to_export
+    measurement_number_to_export = mo.ui.number(start=1, stop=100, step=1, label="Select Number")
+    # measurement_number_to_export
     return (measurement_number_to_export,)
 
 
 @app.cell
 def _(measurement_number_to_export):
+
     measNum = str(measurement_number_to_export.value)
+    # measNum
     return (measNum,)
 
 
 @app.cell
 def _(measNum, measurements_all):
+
     measurement = measurements_all[measNum]
-    measurement
+    # measurement
     return (measurement,)
 
 
 @app.cell
-def _(measurement):
-    measurement['rewVersion']
-    return
+def _(measurement, rewA):
 
-
-@app.cell
-def _(rewA):
+    rewVersion = measurement['rewVersion']
     response = rewA.get_measurements_id_freq_response('1')
-    rmag = response["phase"]
-    response
+    rmag = response["magnitude"]
+    # response, rewVersion
     return (response,)
 
 
@@ -258,17 +265,33 @@ def _():
 
 @app.cell
 def _(dataH, response):
-    decoded_array = dataH.decode_array(response["phase"])
-    decoded_array
+    decoded_array = dataH.decode_array(response["magnitude"])
+    # decoded_array
     return (decoded_array,)
 
 
 @app.cell
 def _():
-    export_single_button = mo.ui.button(label="Export single file as JSON")
-    export_all_button = mo.ui.button(label="Export all as JSON")
-    export_single_button, export_all_button
-    return export_all_button, export_single_button
+    make_json_button = mo.ui.run_button(label='make the json')
+    make_json_button
+    return (make_json_button,)
+
+
+@app.cell
+def _(dataH, decoded_array, export_json_name, make_json_button, measurement):
+    if make_json_button.value:
+        dataH.make_marimo_json(export_json_name.value, measurement, decoded_array)
+    else:
+        print('not json yet')
+    return
+
+
+@app.cell
+def _():
+    # export_single_button = mo.ui.button(label="Export single file as JSON")
+    # export_all_button = mo.ui.button(label="Export all as JSON")
+    # export_single_button, export_all_button
+    return
 
 
 @app.cell
@@ -282,24 +305,14 @@ def _():
 
 
 @app.cell
-def _(
-    dataH,
-    decoded_array,
-    export_all_button,
-    export_single_button,
-    freq_array,
-    i,
-    measurements,
-    rewA,
-    save_file_name,
-):
-    if export_all_button.value:
-        rewA.post_measurements_command_saveall(save_file_name.value)
-    elif export_single_button.value:
-        dataH.make_json(save_file_name.value, freq_array, decoded_array,
-                        measurements, i)
-    else:
-        print("No files exported")
+def _():
+    #if export_all_button.value:
+    #    rewA.post_measurements_command_saveall(save_file_name.value)
+    #elif export_single_button.value:
+    #    dataH.make_json(save_file_name.value, freq_array, decoded_array,
+    #                    measurements, i)
+    #else:
+    #    print("No files exported")
     return
 
 
