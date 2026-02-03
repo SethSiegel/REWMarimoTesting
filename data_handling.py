@@ -8,6 +8,19 @@ from project_paths import get_json_dir, get_stepped_sine_dir, ensure_data_dirs
 
 
 class Data_Handling():
+    def sanitize_filename(self, name, replacement="_"):
+        """Return a filesystem-safe filename (no path separators or reserved chars)."""
+        if name is None:
+            return "untitled"
+        safe = str(name).strip()
+        if not safe:
+            return "untitled"
+        invalid = '<>:"/\\|?*'
+        for ch in invalid:
+            safe = safe.replace(ch, replacement)
+        safe = safe.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+        safe = safe.strip().strip(".")
+        return safe if safe else "untitled"
 
     def decode_array(self, base64_encoded):
         """ Function to decode a base64 encoded array
@@ -382,7 +395,8 @@ class Data_Handling():
 
         ensure_data_dirs()
         out_dir = get_json_dir() if filepath is None else filepath
-        file_path = os.path.join(str(out_dir), f"{name}.json")
+        safe_name = self.sanitize_filename(name)
+        file_path = os.path.join(str(out_dir), f"{safe_name}.json")
         with open(file_path, 'w') as outFile:
             json.dump(outDict, outFile, indent=4)
         return
@@ -431,7 +445,8 @@ class Data_Handling():
                     }
         ensure_data_dirs()
         out_dir = get_stepped_sine_dir() if filepath is None else filepath
-        file_path = os.path.join(str(out_dir), f"{name}.json")
+        safe_name = self.sanitize_filename(name)
+        file_path = os.path.join(str(out_dir), f"{safe_name}.json")
         with open(file_path, 'w') as outFile:
             json.dump(outDict, outFile, indent=4)
         return
@@ -470,7 +485,8 @@ class Data_Handling():
 
         ensure_data_dirs()
         out_dir = get_json_dir() if filepath is None else filepath
-        file_path = os.path.join(str(out_dir), f"{filename}.json")
+        safe_name = self.sanitize_filename(filename)
+        file_path = os.path.join(str(out_dir), f"{safe_name}.json")
 
         with open(file_path, 'w') as outFile:
             outFile.write(

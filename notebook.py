@@ -22,6 +22,7 @@ with app.setup:
     import marimo as mo
     import pathlib as Path
     import time
+    from datetime import datetime
 
 
 @app.cell
@@ -255,9 +256,10 @@ def _():
 
 
 @app.cell
-def _(rewA, save_button, save_file_name):
+def _(dataH, rewA, save_button, save_file_name):
     if save_button.value:
-        rewA.post_measurements_command_saveall(save_file_name.value)
+        safe_save_name = dataH.sanitize_filename(save_file_name.value)
+        rewA.post_measurements_command_saveall(safe_save_name)
     else:
         print("No file saved")
     return
@@ -276,9 +278,9 @@ def _():
 @app.cell
 def _(measurements_all):
     measurement_items = []
-    for meas_id, meas in measurements_all.items():
-        title = meas.get("title", f"Measurement {meas_id}")
-        measurement_items.append((int(meas_id), f"{meas_id}: {title}"))
+    for _meas_id, _meas in measurements_all.items():
+        title = _meas.get("title", f"Measurement {_meas_id}")
+        measurement_items.append((int(_meas_id), f"{_meas_id}: {title}"))
     measurement_items.sort(key=lambda x: x[0])
     measurement_labels = [label for _, label in measurement_items]
 
@@ -411,14 +413,6 @@ def _(measurement):
 
 
 @app.cell
-def _():
-    mo.md(r"""
-    #TODO: figure out way to get the right frequency data to store in the json alongside the magnitude data
-    """)
-    return
-
-
-@app.cell
 def _(export_json_name_value):
     mo.stop(not export_json_name_value, mo.md("Select a measurement to continue."))
 
@@ -460,22 +454,46 @@ def _(
 @app.cell
 def _():
     mo.md(r"""
-    #NOTE: add function to save measurements individually and show the measurements in a dropdown list like the files that can be loaded in
-
-    need to fix up the make_json function so that it works better with the response from the webapp and then I can just set it to run in a loop for the number of measurements that are selected to be exported
+    ### Export All Measurements
+    Export all measurements into a timestamped folder under `data/json`.
     """)
     return
 
 
 @app.cell
 def _():
-    # if export_all_button.value:
-    #     rewA.post_measurements_command_saveall(save_file_name.value)
-    # elif export_single_button.value:
-    #     dataH.make_json(save_file_name.value, freq_array, decoded_array,
-    #                     measurements, i)
-    # else:
-    #     print("No files exported")
+    export_all_button = mo.ui.run_button(label="Export All Measurements")
+    export_all_button
+    return (export_all_button,)
+
+
+@app.cell
+def _(dataH, export_all_button, measurements_all, rewA):
+    mo.stop(not export_all_button.value, mo.md("Click to export all measurements."))
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    export_all_dir = get_json_dir() / f"export_{timestamp}"
+    export_all_dir.mkdir(parents=True, exist_ok=True)
+
+    for _meas_id, _meas in measurements_all.items():
+        response_all = rewA.get_measurements_id_freq_response(str(_meas_id))
+        decoded_array_all = dataH.decode_array(response_all["magnitude"])
+        freq_array_all = dataH.build_freq_array_from_response(
+            response_all,
+            len(decoded_array_all),
+        )
+        smoothing_all = response_all.get("smoothing") if isinstance(response_all, dict) else None
+        filename_all = _meas.get("title", f"measurement_{_meas_id}")
+        dataH.make_marimo_json(
+            filename_all,
+            _meas,
+            decoded_array_all,
+            freq_array_all,
+            smoothing=smoothing_all,
+            filepath=str(export_all_dir),
+        )
+
+    mo.md(rf"Exported to: `{str(export_all_dir)}`")
     return
 
 
