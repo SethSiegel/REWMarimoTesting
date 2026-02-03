@@ -3,6 +3,8 @@ import time
 import subprocess
 import sys
 from urllib.parse import urlencode
+from pathlib import Path
+from project_paths import get_mdat_dir, ensure_data_dirs
 
 
 class REWAutomation():
@@ -395,7 +397,8 @@ class REWAutomation():
             N/A
         """
 
-        filepath = f"C://Users/Seth/Documents/rew_marimo_data/{filename}.mdat"
+        ensure_data_dirs()
+        filepath = str(get_mdat_dir() / f"{filename}.mdat")
         message = '''These are the saved files from automation prototyping'''
         body = {"command": "Save all",
                 "parameters": [filepath,
