@@ -18,6 +18,7 @@ with app.setup:
     from data_handling import Data_Handling
     from LEA_controls import Lea_Settings
     from REW_measurements import Measurements
+    from project_paths import get_mdat_dir, get_json_dir, ensure_data_dirs
     import marimo as mo
     import pathlib as Path
     import time
@@ -96,6 +97,7 @@ def _():
             # rewA.post_audio_asio_output(f"{i+1}: Dante tx {i+1}")
         rewA.post_no_overall_average()
         print("Audio drivers set")
+        ensure_data_dirs()
     return dataH, rewA, rewM
 
 
@@ -111,8 +113,16 @@ def _():
 
 @app.cell
 def _():
+    mo.md(rf"""
+    **Data folder:** `{str(get_mdat_dir().parent)}`
+    """)
+    return
+
+
+@app.cell
+def _():
     file_browser = mo.ui.file_browser(
-        initial_path=r"C:\Users\Seth\Documents\rew_marimo_data\mdat",
+        initial_path=str(get_mdat_dir()),
         multiple=False
     )
     file_browser
@@ -389,7 +399,7 @@ def _(dataH, decoded_array, response):
 
 @app.cell
 def _():
-    json_outpath = r"C:\Users\Seth\Documents\rew_marimo_data\json"
+    json_outpath = str(get_json_dir())
     json_outpath
     return (json_outpath,)
 

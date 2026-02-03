@@ -4,6 +4,7 @@ import json
 import jsonpickle
 import os
 import math
+from project_paths import get_json_dir, get_stepped_sine_dir, ensure_data_dirs
 
 
 class Data_Handling():
@@ -351,7 +352,7 @@ class Data_Handling():
         return unitType
 
     def make_json(self, name, freq_array, decoded_array, measurements, i,
-                  filepath: str = "C://Users/seth/Desktop/REW/json/"):
+                  filepath: str = None):
         """ Function to make a .json file from the decoded data
 
         Args:
@@ -379,13 +380,15 @@ class Data_Handling():
                                     }
                     }
 
-        with open(filepath + name + '.json', 'w') as outFile:
+        ensure_data_dirs()
+        out_dir = get_json_dir() if filepath is None else filepath
+        file_path = os.path.join(str(out_dir), f"{name}.json")
+        with open(file_path, 'w') as outFile:
             json.dump(outDict, outFile, indent=4)
         return
 
     def make_stepped_json(self, name, dist_data, measurements, i,
-                          filepath: str =
-                          "C://Users/seth/Desktop/REW/stepped-sine/"):
+                          filepath: str = None):
         """This function is used to make a .json file from the decoded data
         for stepped sine sweep measurements
         Args:
@@ -426,14 +429,17 @@ class Data_Handling():
                                     "End Frequency": mea[i]["endFreq"],
                                     }
                     }
-        with open(filepath + name + '.json', 'w') as outFile:
+        ensure_data_dirs()
+        out_dir = get_stepped_sine_dir() if filepath is None else filepath
+        file_path = os.path.join(str(out_dir), f"{name}.json")
+        with open(file_path, 'w') as outFile:
             json.dump(outDict, outFile, indent=4)
         return
 
     def make_marimo_json(self, filename, measurement, decoded_array,
                          freq_array=None,
                          smoothing=None,
-                         filepath: str = "/Users/bigmac/Documents/Testing_Chamber_REW_Files/LA/JSON"):
+                         filepath: str = None):
         """ Function to make a .json file from the decoded data
 
         Args:
@@ -462,7 +468,9 @@ class Data_Handling():
                                     }
                     }
 
-        file_path = os.path.join(filepath, f"{filename}.json")
+        ensure_data_dirs()
+        out_dir = get_json_dir() if filepath is None else filepath
+        file_path = os.path.join(str(out_dir), f"{filename}.json")
 
         with open(file_path, 'w') as outFile:
             outFile.write(
