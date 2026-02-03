@@ -2,6 +2,7 @@ import requests
 import time
 import subprocess
 import sys
+from urllib.parse import urlencode
 
 
 class REWAutomation():
@@ -168,19 +169,42 @@ class REWAutomation():
         get_response = self.get_request("/measurements/" + id)
         return get_response
 
-    def get_measurements_id_freq_response(self, id: str):
+    def get_measurements_id_freq_response(self, id: str, smoothing=None,
+                                          unit=None, ppo=None):
         """ Function to get the frequency response of a specified measurement
 
         Args:
             id (str): the id of the measurement whose frequency response it
                         to be retrieved
+            smoothing (str | None): smoothing option, e.g. "1/12"
+            unit (str | None): unit for magnitude, e.g. "SPL"
+            ppo (int | None): points-per-octave for log spacing
 
         Returns:
             measurement (dict): the frequency response of the
                                 specified measurement
         """
         get_request_body = "/measurements/" + id + "/frequency-response"
+        query_parts = []
+        if smoothing:
+            smoothing_value = str(smoothing)
+            if not (smoothing_value.startswith('"') and smoothing_value.endswith('"')):
+                smoothing_value = f"\"{smoothing_value}\""
+            query_parts.append(f"smoothing={smoothing_value}")
+        if unit:
+            query_parts.append(f"unit={unit}")
+        if ppo:
+            query_parts.append(f"ppo={ppo}")
+        if query_parts:
+            get_request_body = get_request_body + "?" + "&".join(query_parts)
         get_response = self.get_request(get_request_body)
+        return get_response
+
+    def get_measurements_frequency_response_smoothing_choices(self):
+        """ Function to get smoothing choices for frequency responses """
+        get_response = self.get_request(
+            "/measurements/frequency-response/smoothing-choices"
+        )
         return get_response
 
     def get_measurements_distortion(self, id: str):

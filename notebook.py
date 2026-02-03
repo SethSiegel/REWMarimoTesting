@@ -10,7 +10,7 @@
 
 import marimo
 
-__generated_with = "0.19.6"
+__generated_with = "0.19.7"
 app = marimo.App()
 
 with app.setup:
@@ -20,13 +20,20 @@ with app.setup:
     from REW_measurements import Measurements
     import marimo as mo
     import pathlib as Path
-    # import time
+    import time
 
 
 @app.cell
 def _():
     mo.md(r"""
-    import statements
+    # REW Sweep + Export Tool
+    ---
+
+    This notebook guides you through:
+    1. Loading a `.mdat` file
+    2. Running sweeps
+    3. Saving measurements in REW
+    4. Exporting a JSON file
     """)
     return
 
@@ -34,7 +41,9 @@ def _():
 @app.cell
 def _():
     mo.md(r"""
-    Initial program setup
+    ## Setup
+    ---
+    Connect to REW and initialize the automation helper classes.
     """)
     return
 
@@ -87,13 +96,23 @@ def _():
             # rewA.post_audio_asio_output(f"{i+1}: Dante tx {i+1}")
         rewA.post_no_overall_average()
         print("Audio drivers set")
-    return dataH, measurements, rewA, rewM
+    return dataH, rewA, rewM
+
+
+@app.cell
+def _():
+    mo.md(r"""
+    ## Load .mdat files
+    ---
+    Choose a REW measurement file to load.
+    """)
+    return
 
 
 @app.cell
 def _():
     file_browser = mo.ui.file_browser(
-        initial_path=r"C:\Users\Seth\Documents\REW_test_data\mdat",
+        initial_path=r"C:\Users\Seth\Documents\rew_marimo_data\mdat",
         multiple=False
     )
     file_browser
@@ -126,6 +145,16 @@ def _(load_button, path_str, rewA):
 
 @app.cell
 def _():
+    mo.md(r"""
+    ## Unit Info
+    ---
+    Provide the unit type and number that will be embedded in the measurement name.
+    """)
+    return
+
+
+@app.cell
+def _():
     unitType = mo.ui.text(label="What type of unit is this?:")
     unitType
     return (unitType,)
@@ -140,8 +169,28 @@ def _():
 
 @app.cell
 def _():
+    mo.md(r"""
+    ## Amplifier (Optional)
+    ---
+    Enter the amplifier IP if needed for your setup.
+    """)
+    return
+
+
+@app.cell
+def _():
     amp_ip_address = mo.ui.text(label="Enter LEA Amplifier IP Address:")
     amp_ip_address
+    return
+
+
+@app.cell
+def _():
+    mo.md(r"""
+    ## Run Measurement
+    ---
+    Choose a sweep type to run the measurement.
+    """)
     return
 
 
@@ -173,6 +222,16 @@ def _(
 
 @app.cell
 def _():
+    mo.md(r"""
+    ## Save in REW
+    ---
+    Save the measurements inside REW.
+    """)
+    return
+
+
+@app.cell
+def _():
     save_file_name = mo.ui.text(label="What do you want to name the file?:")
     save_file_name
     return (save_file_name,)
@@ -196,56 +255,149 @@ def _(rewA, save_button, save_file_name):
 
 @app.cell
 def _():
-    export_json_name = mo.ui.text(label="What do you want to call the exported JSON?:")
-    export_json_name
-    return (export_json_name,)
+    mo.md(r"""
+    ## Export JSON
+    ---
+    Select a measurement and export it as JSON.
+    """)
+    return
 
 
 @app.cell
-def _(dataH, decoded_array, export_json_name, measurement):
-    dataH.make_marimo_json(export_json_name.value, measurement, decoded_array)
+def _(measurements_all):
+    measurement_items = []
+    for meas_id, meas in measurements_all.items():
+        title = meas.get("title", f"Measurement {meas_id}")
+        measurement_items.append((int(meas_id), f"{meas_id}: {title}"))
+    measurement_items.sort(key=lambda x: x[0])
+    measurement_labels = [label for _, label in measurement_items]
+
+    measurement_label_select = mo.ui.dropdown(
+        options=measurement_labels,
+        value=measurement_labels[0] if measurement_labels else None,
+        label="Select measurement",
+    )
+    measurement_label_select
+    return (measurement_label_select,)
+
+
+@app.cell
+def _(measurement_label_select):
+    selected_label = measurement_label_select.value or ""
+    selected_id = selected_label.split(":", 1)[0].strip() if selected_label else ""
+    export_json_name_value = selected_label.split(":", 1)[1].strip() if ":" in selected_label else ""
+    return export_json_name_value, selected_id
+
+
+@app.cell
+def _():
+    mo.md(r"""
+    ### Smoothing (optional)
+    Select a smoothing option to apply to the frequency response.
+    """)
     return
 
 
 @app.cell
 def _(rewA):
-    measurements_all = rewA.get_measurements()
-    measurements_all
+    smoothing_choices_raw = rewA.get_measurements_frequency_response_smoothing_choices()
+    # smoothing_choices_raw
+    return (smoothing_choices_raw,)
+
+
+@app.cell
+def _(smoothing_choices_raw):
+    smoothing_options = ["Default"]
+    smoothing_choices_list = smoothing_choices_raw
+    if isinstance(smoothing_choices_list, dict):
+        smoothing_choices_list = smoothing_choices_list.get(
+            "choices",
+            smoothing_choices_list.get("options", []),
+        )
+    if isinstance(smoothing_choices_list, list):
+        for item in smoothing_choices_list:
+            if isinstance(item, dict):
+                value = item.get("value")
+                if value is not None:
+                    smoothing_options.append(str(value))
+            else:
+                smoothing_options.append(str(item))
+    smoothing_select = mo.ui.dropdown(
+        options=smoothing_options,
+        value="Default",
+        label="Smoothing",
+    )
+    smoothing_select
+    return (smoothing_select,)
+
+
+@app.cell
+def _(load_button, rewA):
+    mo.stop(not load_button.value, mo.md("click the button to continue"))
+
+    time.sleep(3)
+    with mo.status.spinner(title="Fetching data..."):
+        measurements_all = rewA.get_measurements()
     return (measurements_all,)
 
 
 @app.cell
-def _():
-    measurement_number_to_export = mo.ui.number(label="Which measurement do you want to export as a JSON?:")
-    measurement_number_to_export
-    return (measurement_number_to_export,)
-
-
-@app.cell
-def _(measurement_number_to_export):
-    measNum = str(measurement_number_to_export.value)
+def _(selected_id):
+    measNum = str(selected_id)
+    # measNum
     return (measNum,)
 
 
 @app.cell
 def _(measNum, measurements_all):
     measurement = measurements_all[measNum]
-    measurement
+    # measurement
     return (measurement,)
+
+
+@app.cell
+def _(export_json_name_value, measNum, measurement, rewA, smoothing_select):
+    rewVersion = measurement["rewVersion"]
+    selected_smoothing = smoothing_select.value
+    if selected_smoothing == "Default":
+        selected_smoothing = None
+    response = rewA.get_measurements_id_freq_response(
+        measNum,
+        smoothing=selected_smoothing,
+    )
+    rmag = response["magnitude"]
+    dummy=export_json_name_value
+    # response, rewVersion
+    selected_smoothing
+    response
+    return response, selected_smoothing
+
+
+@app.cell
+def _(dataH, response):
+    decoded_array = dataH.decode_array(response["magnitude"])
+    # decoded_array
+    return (decoded_array,)
+
+
+@app.cell
+def _(dataH, decoded_array, response):
+    freq_array = dataH.build_freq_array_from_response(response, len(decoded_array))
+    # freq_array
+    return (freq_array,)
+
+
+@app.cell
+def _():
+    json_outpath = r"C:\Users\Seth\Documents\rew_marimo_data\json"
+    json_outpath
+    return (json_outpath,)
 
 
 @app.cell
 def _(measurement):
     measurement['rewVersion']
     return
-
-
-@app.cell
-def _(rewA):
-    response = rewA.get_measurements_id_freq_response('1')
-    rmag = response["phase"]
-    response
-    return (response,)
 
 
 @app.cell
@@ -257,18 +409,42 @@ def _():
 
 
 @app.cell
-def _(dataH, response):
-    decoded_array = dataH.decode_array(response["phase"])
-    decoded_array
-    return (decoded_array,)
+def _(export_json_name_value):
+    mo.stop(not export_json_name_value, mo.md("Select a measurement to continue."))
+
+    make_json_button = mo.ui.run_button(label='make the json')
+    make_json_button
+    return (make_json_button,)
 
 
 @app.cell
-def _():
-    export_single_button = mo.ui.button(label="Export single file as JSON")
-    export_all_button = mo.ui.button(label="Export all as JSON")
-    export_single_button, export_all_button
-    return export_all_button, export_single_button
+def _(
+    dataH,
+    decoded_array,
+    export_json_name_value,
+    freq_array,
+    json_outpath,
+    make_json_button,
+    measurement,
+    response,
+    selected_smoothing,
+):
+    mo.stop(not export_json_name_value)
+    if make_json_button.value:
+        smoothing = response.get("smoothing") if isinstance(response, dict) else None
+        if selected_smoothing:
+            smoothing = selected_smoothing
+        dataH.make_marimo_json(
+            export_json_name_value,
+            measurement,
+            decoded_array,
+            freq_array,
+            smoothing=smoothing,
+            filepath=json_outpath,
+        )
+    else:
+        print('not json yet')
+    return
 
 
 @app.cell
@@ -282,24 +458,24 @@ def _():
 
 
 @app.cell
-def _(
-    dataH,
-    decoded_array,
-    export_all_button,
-    export_single_button,
-    freq_array,
-    i,
-    measurements,
-    rewA,
-    save_file_name,
-):
-    if export_all_button.value:
-        rewA.post_measurements_command_saveall(save_file_name.value)
-    elif export_single_button.value:
-        dataH.make_json(save_file_name.value, freq_array, decoded_array,
-                        measurements, i)
-    else:
-        print("No files exported")
+def _():
+    # if export_all_button.value:
+    #     rewA.post_measurements_command_saveall(save_file_name.value)
+    # elif export_single_button.value:
+    #     dataH.make_json(save_file_name.value, freq_array, decoded_array,
+    #                     measurements, i)
+    # else:
+    #     print("No files exported")
+    return
+
+
+@app.cell
+def _():
+    mo.md(r"""
+    ## Exit
+    ---
+    Shut down REW when finished.
+    """)
     return
 
 

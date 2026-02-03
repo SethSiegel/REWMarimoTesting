@@ -3,6 +3,7 @@ import struct
 import json
 import jsonpickle
 import os
+import math
 
 
 class Data_Handling():
@@ -34,6 +35,31 @@ class Data_Handling():
         float_array = list(struct.unpack('>' + 'f' * (len(bytes_data) // 4),
                                          bytes_data))
         return float_array
+
+    def build_freq_array_from_response(self, response, length):
+        """Build frequency array for a REW FrequencyResponse.
+
+        Uses startFreq with either freqStep (linear) or ppo (log spaced).
+        The length should match the decoded magnitude array length.
+        """
+        if response is None or length is None or length <= 0:
+            return []
+
+        start_freq = response.get("startFreq")
+        freq_step = response.get("freqStep")
+        ppo = response.get("ppo")
+
+        if start_freq is None:
+            return []
+
+        if freq_step is not None:
+            return [start_freq + i * freq_step for i in range(length)]
+
+        if ppo is not None:
+            ratio = math.exp(math.log(2.0) / ppo)
+            return [start_freq * (ratio ** i) for i in range(length)]
+
+        return []
 
     # separate file
     def load_json_column(self, column: str = "SPL(dB)",
@@ -406,7 +432,8 @@ class Data_Handling():
 
     def make_marimo_json(self, filename, measurement, decoded_array,
                          freq_array=None,
-                         filepath: str = "C://Users/seth/Documents/rew_marimo_data"):
+                         smoothing=None,
+                         filepath: str = "/Users/bigmac/Documents/Testing_Chamber_REW_Files/LA/JSON"):
         """ Function to make a .json file from the decoded data
 
         Args:
@@ -421,7 +448,7 @@ class Data_Handling():
         mea = measurement
         outDict = {
                     "filename": filename,
-                    # "Freq(Hz)": freq_array,
+                    "Freq(Hz)": freq_array,
                     "SPL(dB)": decoded_array,
                     "Meta Data": {
                                     "REW Version": mea["rewVersion"],
@@ -431,12 +458,13 @@ class Data_Handling():
                                     "Measurement": mea["title"],
                                     "Start Frequency": mea["startFreq"],
                                     "End Frequency": mea["endFreq"],
+                                    "Smoothing": smoothing,
                                     }
                     }
 
         file_path = os.path.join(filepath, f"{filename}.json")
 
-        with open(file_path + '.json', 'w') as outFile:
+        with open(file_path, 'w') as outFile:
             outFile.write(
                 jsonpickle.encode(outDict, indent=4)
             )
