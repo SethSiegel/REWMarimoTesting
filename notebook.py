@@ -269,7 +269,9 @@ def _():
 
 
 @app.cell
-def _():
+def _(export_json_name):
+    mo.stop(not export_json_name.value, mo.md('json needs name'))
+
     make_json_button = mo.ui.run_button(label='make the json')
     make_json_button
     return (make_json_button,)
