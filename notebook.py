@@ -93,9 +93,8 @@ def _():
 @app.cell
 def _():
     file_browser = mo.ui.file_browser(
-        initial_path=r"/Users/bigmac/Documents/Testing_Chamber_REW_Files/LA",
+        initial_path=r"C:\Users\Seth\Documents\rew_marimo_data\mdat",
         multiple=False
-        # '/Users/bigmac/Documents/Testing Chamber - REW Files/LA/RX600_354_Benchmark_LA_012126.mdat'
     )
     file_browser
     return (file_browser,)
@@ -110,15 +109,6 @@ def _(file_browser):
 
 
 @app.cell
-def _(load_button, path_str, rewA):
-    if load_button.value:
-        rewA.load_mdat(path_str)
-    else:
-        print("No file loaded")
-    return
-
-
-@app.cell
 def _():
     load_button = mo.ui.run_button(label="Load mdat file")
     load_button
@@ -126,8 +116,11 @@ def _():
 
 
 @app.cell
-def _(load_button):
-    load_button.value
+def _(load_button, path_str, rewA):
+    if load_button.value:
+        rewA.load_mdat(path_str)
+    else:
+        print("No file loaded")
     return
 
 
@@ -210,49 +203,61 @@ def _():
 
 @app.cell
 def _(load_button, rewA):
-
     mo.stop(not load_button.value, mo.md("click the button to continue"))
 
     time.sleep(3)
-
     with mo.status.spinner(title="Fetching data..."):
         measurements_all = rewA.get_measurements()
-
-    # measurements_all
     return (measurements_all,)
 
 
 @app.cell
 def _():
-    measurement_number_to_export = mo.ui.number(start=1, stop=100, step=1, label="Select Number")
-    # measurement_number_to_export
+    measurement_number_to_export = mo.ui.number(start=1, stop=100, step=1, label="select number")
+    measurement_number_to_export
     return (measurement_number_to_export,)
 
 
 @app.cell
 def _(measurement_number_to_export):
-
     measNum = str(measurement_number_to_export.value)
-    # measNum
     return (measNum,)
 
 
 @app.cell
 def _(measNum, measurements_all):
-
     measurement = measurements_all[measNum]
-    # measurement
+    measurement
     return (measurement,)
 
 
 @app.cell
 def _(measurement, rewA):
-
-    rewVersion = measurement['rewVersion']
-    response = rewA.get_measurements_id_freq_response('1')
+    rewVersion = measurement["rewVersion"]
+    response = rewA.get_measurements_id_freq_response("1")
     rmag = response["magnitude"]
-    # response, rewVersion
+    response, rewVersion
     return (response,)
+
+
+@app.cell
+def _(dataH, response):
+    decoded_array = dataH.decode_array(response["magnitude"])
+    decoded_array
+    return (decoded_array,)
+
+
+@app.cell
+def _():
+    json_outpath = r"C:\Users\Seth\Documents\rew_marimo_data\json"
+    json_outpath
+    return (json_outpath,)
+
+
+@app.cell
+def _(measurement):
+    measurement['rewVersion']
+    return
 
 
 @app.cell
@@ -264,13 +269,6 @@ def _():
 
 
 @app.cell
-def _(dataH, response):
-    decoded_array = dataH.decode_array(response["magnitude"])
-    # decoded_array
-    return (decoded_array,)
-
-
-@app.cell
 def _():
     make_json_button = mo.ui.run_button(label='make the json')
     make_json_button
@@ -278,19 +276,18 @@ def _():
 
 
 @app.cell
-def _(dataH, decoded_array, export_json_name, make_json_button, measurement):
+def _(
+    dataH,
+    decoded_array,
+    export_json_name,
+    json_outpath,
+    make_json_button,
+    measurement,
+):
     if make_json_button.value:
-        dataH.make_marimo_json(export_json_name.value, measurement, decoded_array)
+        dataH.make_marimo_json(export_json_name.value, measurement, decoded_array, freq_array=None, filepath=json_outpath)
     else:
         print('not json yet')
-    return
-
-
-@app.cell
-def _():
-    # export_single_button = mo.ui.button(label="Export single file as JSON")
-    # export_all_button = mo.ui.button(label="Export all as JSON")
-    # export_single_button, export_all_button
     return
 
 
@@ -306,13 +303,13 @@ def _():
 
 @app.cell
 def _():
-    #if export_all_button.value:
-    #    rewA.post_measurements_command_saveall(save_file_name.value)
-    #elif export_single_button.value:
-    #    dataH.make_json(save_file_name.value, freq_array, decoded_array,
-    #                    measurements, i)
-    #else:
-    #    print("No files exported")
+    # if export_all_button.value:
+    #     rewA.post_measurements_command_saveall(save_file_name.value)
+    # elif export_single_button.value:
+    #     dataH.make_json(save_file_name.value, freq_array, decoded_array,
+    #                     measurements, i)
+    # else:
+    #     print("No files exported")
     return
 
 
