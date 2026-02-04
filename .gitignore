@@ -1,2 +1,4 @@
 data/
-_pycache_/
+.env
+pgdata/
+__pycache__/
