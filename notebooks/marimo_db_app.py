@@ -13,6 +13,12 @@ __generated_with = "0.19.7"
 app = marimo.App()
 
 with app.setup:
+    import sys
+    import pathlib as _pathlib
+    repo_root = _pathlib.Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
     import marimo as mo
     import os
     from datetime import datetime
