@@ -24,3 +24,6 @@ REW_DATA_DIR=/Users/yourname/Documents/rew_marimo_data
 ```
 
 If `REW_DATA_DIR` is set, all data will be read/written under that folder.
+
+## Repository Hygiene
+macOS creates `.DS_Store` files to remember Finder view preferences. These files are ignored by git in this repo.

@@ -28,7 +28,7 @@ with app.setup:
     import marimo as mo
     import pathlib as Path
     import time
-    from datetime import datetime
+from datetime import datetime
 
 
 @app.cell
@@ -39,9 +39,10 @@ def _():
 
     This notebook guides you through:
     1. Loading a `.mdat` file
-    2. Running sweeps
-    3. Saving measurements in REW
-    4. Exporting a JSON file
+    2. Entering unit info (used for naming)
+    3. Running sweeps
+    4. Saving measurements in REW
+    5. Exporting JSON (single or all)
     """)
     return
 
@@ -165,7 +166,7 @@ def _():
     mo.md(r"""
     ## Unit Info
     ---
-    Provide the unit type and number that will be embedded in the measurement name.
+    Provide the unit type and number used to name measurements.
     """)
     return
 
@@ -182,6 +183,13 @@ def _():
     unitNumber = mo.ui.text(label="What number unit is this?:")
     unitNumber
     return (unitNumber,)
+
+
+@app.cell
+def _(unitNumber, unitType):
+    _unit_name = f"{unitType.value} {unitNumber.value}".strip()
+    mo.md(rf"**Current measurement name:** `{_unit_name or '—'}`")
+    return (_unit_name,)
 
 
 @app.cell
@@ -206,7 +214,7 @@ def _():
     mo.md(r"""
     ## Run Measurement
     ---
-    Choose a sweep type to run the measurement.
+    Choose a sweep type to run the measurement using the name above.
     """)
     return
 
@@ -242,7 +250,7 @@ def _():
     mo.md(r"""
     ## Save in REW
     ---
-    Save the measurements inside REW.
+    Save the measurements inside REW using the filename below.
     """)
     return
 
@@ -277,6 +285,7 @@ def _():
     ## Export JSON
     ---
     Select a measurement and export it as JSON.
+    Filenames use `YYYYMMDD_HHMMSS__ID<id>__<title>.json`.
     """)
     return
 
@@ -438,14 +447,18 @@ def _(
     measurement,
     response,
     selected_smoothing,
+    measNum,
 ):
     mo.stop(not export_json_name_value)
     if make_json_button.value:
         smoothing = response.get("smoothing") if isinstance(response, dict) else None
         if selected_smoothing:
             smoothing = selected_smoothing
+        _timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        _base_name = f"{_timestamp}__ID{measNum}__{export_json_name_value}"
+        _export_name = dataH.sanitize_filename(_base_name)
         dataH.make_marimo_json(
-            export_json_name_value,
+            _export_name,
             measurement,
             decoded_array,
             freq_array,
@@ -461,7 +474,7 @@ def _(
 def _():
     mo.md(r"""
     ### Export All Measurements
-    Export all measurements into a timestamped folder under `data/json`.
+    Export all measurements into `data/json` using the same naming scheme.
     """)
     return
 
@@ -477,9 +490,7 @@ def _():
 def _(dataH, export_all_button, measurements_all, rewA):
     mo.stop(not export_all_button.value, mo.md("Click to export all measurements."))
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    export_all_dir = get_json_dir() / f"export_{timestamp}"
-    export_all_dir.mkdir(parents=True, exist_ok=True)
+    export_all_dir = get_json_dir()
 
     for _meas_id, _meas in measurements_all.items():
         response_all = rewA.get_measurements_id_freq_response(str(_meas_id))
@@ -490,8 +501,11 @@ def _(dataH, export_all_button, measurements_all, rewA):
         )
         smoothing_all = response_all.get("smoothing") if isinstance(response_all, dict) else None
         filename_all = _meas.get("title", f"measurement_{_meas_id}")
+        _timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        _base_name = f"{_timestamp}__ID{_meas_id}__{filename_all}"
+        _export_name = dataH.sanitize_filename(_base_name)
         dataH.make_marimo_json(
-            filename_all,
+            _export_name,
             _meas,
             decoded_array_all,
             freq_array_all,

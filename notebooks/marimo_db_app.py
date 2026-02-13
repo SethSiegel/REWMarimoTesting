@@ -302,14 +302,32 @@ def _():
 
 @app.cell
 def _(records):
-    file_id_options = [r.get("file_id") for r in records if r.get("file_id")]
-    delete_file_id = mo.ui.dropdown(
-        options=file_id_options,
-        value=file_id_options[0] if file_id_options else None,
-        label="Select file_id to delete",
+    file_id_items = []
+    for r in records:
+        file_id = r.get("file_id")
+        if not file_id:
+            continue
+        title = r.get("title") or r.get("relative_path") or "Untitled"
+        label = f"{file_id}: {title}"
+        file_id_items.append((label, file_id))
+
+    file_id_items.sort(key=lambda x: x[0])
+    delete_labels = [label for label, _ in file_id_items]
+    label_to_id = {label: file_id for label, file_id in file_id_items}
+
+    delete_file_ids = mo.ui.multiselect(
+        options=delete_labels,
+        value=delete_labels[:1] if delete_labels else [],
+        label="Select file_ids to delete",
     )
-    delete_file_id
-    return (delete_file_id,)
+    delete_file_ids
+    return (delete_file_ids, label_to_id)
+
+
+@app.cell
+def _(delete_file_ids, label_to_id):
+    selected_ids = [label_to_id[label] for label in delete_file_ids.value]
+    return (selected_ids,)
 
 
 @app.cell
@@ -320,25 +338,25 @@ def _():
 
 
 @app.cell
-def _(conn, delete_file_id, delete_password):
+def _(conn, delete_file_ids, delete_password):
     delete_button = mo.ui.run_button(label="Delete Selected Entry")
     delete_button
     return (delete_button,)
 
 
 @app.cell
-def _(conn, delete_button, delete_file_id, delete_password):
+def _(conn, delete_button, delete_password, selected_ids):
     mo.stop(not delete_button.value, mo.md("Click **Delete Selected Entry** to proceed."))
     mo.stop(delete_password.value.strip() != "12354", mo.md("Invalid password."))
-    mo.stop(not delete_file_id.value, mo.md("No file selected."))
+    mo.stop(not selected_ids, mo.md("No files selected."))
 
     with conn.cursor() as _cur:
         _cur.execute(
-            "DELETE FROM measurement_file WHERE id = %s",
-            (delete_file_id.value,),
+            "DELETE FROM measurement_file WHERE id = ANY(%s)",
+            (selected_ids,),
         )
     conn.commit()
-    mo.md("Entry deleted.")
+    mo.md(f"Deleted {len(selected_ids)} entries.")
     return
 
 
