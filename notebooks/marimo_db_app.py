@@ -108,16 +108,16 @@ def _():
 
 @app.cell
 def _():
-    local_root = repo_root / "data"
-    shared_root = get_data_root()
+    import_local_root = repo_root / "data"
+    import_shared_root = get_data_root()
     copy_to_shared = mo.ui.checkbox(
         value=True,
         label="Copy local files to shared data folder (REW_DATA_DIR)",
     )
-    mo.md(rf"**Importing from:** `{str(local_root)}`")
-    mo.md(rf"**Shared data folder:** `{str(shared_root)}`")
+    mo.md(rf"**Importing from:** `{str(import_local_root)}`")
+    mo.md(rf"**Shared data folder:** `{str(import_shared_root)}`")
     copy_to_shared
-    return (copy_to_shared, local_root, shared_root)
+    return (copy_to_shared, import_local_root, import_shared_root)
 
 
 @app.cell
@@ -128,10 +128,10 @@ def _():
 
 
 @app.cell
-def _(import_button, conn, copy_to_shared, local_root, shared_root):
+def _(import_button, conn, copy_to_shared, import_local_root, import_shared_root):
     mo.stop(not import_button.value, mo.md("Click **Import Local Files** to run."))
-    copy_root = shared_root if copy_to_shared.value else None
-    import_files(conn=conn, data_root_override=local_root, copy_to_shared_root=copy_root)
+    copy_root = import_shared_root if copy_to_shared.value else None
+    import_files(conn=conn, data_root_override=import_local_root, copy_to_shared_root=copy_root)
     mo.md("Import complete.")
     return
 
