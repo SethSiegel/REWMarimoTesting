@@ -108,15 +108,22 @@ def _():
 
 @app.cell
 def _():
+    local_root = repo_root / "data"
+    mo.md(rf"**Importing from:** `{str(local_root)}`")
+    return (local_root,)
+
+
+@app.cell
+def _():
     import_button = mo.ui.run_button(label="Import Local Files")
     import_button
     return (import_button,)
 
 
 @app.cell
-def _(import_button):
+def _(import_button, conn, local_root):
     mo.stop(not import_button.value, mo.md("Click **Import Local Files** to run."))
-    import_files()
+    import_files(conn=conn, data_root_override=local_root)
     mo.md("Import complete.")
     return
 

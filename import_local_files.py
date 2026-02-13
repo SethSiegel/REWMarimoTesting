@@ -147,13 +147,27 @@ def parse_measurement_json(path, relative_path=None):
     }
 
 
-def import_files(host_name="MrWorldWide", base_url="http://placeholder.local"):
+def import_files(
+    host_name="MrWorldWide",
+    base_url="http://placeholder.local",
+    conn=None,
+    data_root_override=None,
+):
 
-    data_root = get_data_root()
-    mdat_dir = get_mdat_dir()
-    json_dir = get_json_dir()
+    if data_root_override is not None:
+        data_root = Path(data_root_override).expanduser().resolve()
+        mdat_dir = data_root / "mdat"
+        json_dir = data_root / "json"
+    else:
+        data_root = get_data_root()
+        mdat_dir = get_mdat_dir()
+        json_dir = get_json_dir()
 
-    with get_db_conn() as conn:
+    external_conn = conn is not None
+    if conn is None:
+        conn = get_db_conn()
+
+    try:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -295,6 +309,9 @@ def import_files(host_name="MrWorldWide", base_url="http://placeholder.local"):
                     )
 
         conn.commit()
+    finally:
+        if not external_conn:
+            conn.close()
 
 
 def main():
