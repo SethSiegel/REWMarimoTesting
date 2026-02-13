@@ -5,6 +5,7 @@ import hashlib
 import json
 import uuid
 from datetime import datetime
+import shutil
 
 from project_paths import get_data_root, get_mdat_dir, get_json_dir
 
@@ -152,6 +153,7 @@ def import_files(
     base_url="http://placeholder.local",
     conn=None,
     data_root_override=None,
+    copy_to_shared_root=None,
 ):
 
     if data_root_override is not None:
@@ -162,6 +164,10 @@ def import_files(
         data_root = get_data_root()
         mdat_dir = get_mdat_dir()
         json_dir = get_json_dir()
+
+    copy_root = None
+    if copy_to_shared_root is not None:
+        copy_root = Path(copy_to_shared_root).expanduser().resolve()
 
     external_conn = conn is not None
     if conn is None:
@@ -185,6 +191,11 @@ def import_files(
             # MDAT files
             for path in iter_files(mdat_dir, "*.mdat"):
                 relative_path = str(path.relative_to(data_root)).replace("\\", "/")
+                if copy_root and copy_root != data_root:
+                    _copy_target = copy_root / relative_path
+                    _copy_target.parent.mkdir(parents=True, exist_ok=True)
+                    if not _copy_target.exists() or sha256_file(_copy_target) != sha256_file(path):
+                        shutil.copy2(path, _copy_target)
                 checksum = sha256_file(path)
                 if file_already_indexed(cur, host_id, "mdat", relative_path):
                     cur.execute(
@@ -210,6 +221,11 @@ def import_files(
             # JSON files
             for path in iter_files(json_dir, "**/*.json"):
                 relative_path = str(path.relative_to(data_root)).replace("\\", "/")
+                if copy_root and copy_root != data_root:
+                    _copy_target = copy_root / relative_path
+                    _copy_target.parent.mkdir(parents=True, exist_ok=True)
+                    if not _copy_target.exists() or sha256_file(_copy_target) != sha256_file(path):
+                        shutil.copy2(path, _copy_target)
                 kind = "json"
                 checksum = sha256_file(path)
                 measurement_data = parse_measurement_json(path, relative_path=relative_path)

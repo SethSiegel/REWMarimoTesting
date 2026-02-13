@@ -109,8 +109,15 @@ def _():
 @app.cell
 def _():
     local_root = repo_root / "data"
+    shared_root = get_data_root()
+    copy_to_shared = mo.ui.checkbox(
+        value=True,
+        label="Copy local files to shared data folder (REW_DATA_DIR)",
+    )
     mo.md(rf"**Importing from:** `{str(local_root)}`")
-    return (local_root,)
+    mo.md(rf"**Shared data folder:** `{str(shared_root)}`")
+    copy_to_shared
+    return (copy_to_shared, local_root, shared_root)
 
 
 @app.cell
@@ -121,9 +128,10 @@ def _():
 
 
 @app.cell
-def _(import_button, conn, local_root):
+def _(import_button, conn, copy_to_shared, local_root, shared_root):
     mo.stop(not import_button.value, mo.md("Click **Import Local Files** to run."))
-    import_files(conn=conn, data_root_override=local_root)
+    copy_root = shared_root if copy_to_shared.value else None
+    import_files(conn=conn, data_root_override=local_root, copy_to_shared_root=copy_root)
     mo.md("Import complete.")
     return
 
@@ -244,8 +252,26 @@ def _(records):
 def _(plot_select):
     mo.stop(not plot_select.value, mo.md("Select a JSON file to plot."))
 
-    data_root = get_data_root()
-    json_path = data_root / plot_select.value
+    shared_root = get_data_root()
+    local_root = repo_root / "data"
+    json_path_shared = shared_root / plot_select.value
+    json_path_local = local_root / plot_select.value
+
+    if json_path_shared.exists():
+        json_path = json_path_shared
+    elif json_path_local.exists():
+        json_path = json_path_local
+        mo.md(rf"Using local file: `{str(json_path_local)}`")
+    else:
+        mo.stop(
+            True,
+            mo.md(
+                rf"File not found in shared or local data folders. Checked:"
+                f"\n- `{str(json_path_shared)}`"
+                f"\n- `{str(json_path_local)}`"
+            ),
+        )
+
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
