@@ -28,7 +28,7 @@ with app.setup:
     import marimo as mo
     import pathlib as Path
     import time
-from datetime import datetime
+    from datetime import datetime
 
 
 @app.cell
@@ -143,6 +143,15 @@ def _(file_browser):
     path_str = str(fileName).replace("\\", "/")
     path_str
     return (path_str,)
+
+
+@app.cell
+def _(path_str):
+    parent_mdat = None
+    if path_str:
+        _path = Path.Path(path_str)
+        parent_mdat = _path.stem
+    return (parent_mdat,)
 
 
 @app.cell
@@ -360,11 +369,12 @@ def _(smoothing_choices_raw):
 
 @app.cell
 def _(load_button, rewA):
-    mo.stop(not load_button.value, mo.md("click the button to continue"))
-
-    time.sleep(3)
-    with mo.status.spinner(title="Fetching data..."):
-        measurements_all = rewA.get_measurements()
+    if load_button.value:
+        time.sleep(3)
+        with mo.status.spinner(title="Fetching data..."):
+            measurements_all = rewA.get_measurements()
+    else:
+        measurements_all = {}
     return (measurements_all,)
 
 
@@ -377,23 +387,24 @@ def _(selected_id):
 
 @app.cell
 def _(measNum, measurements_all):
-    measurement = measurements_all[measNum]
+    measurement = measurements_all.get(measNum, {})
     # measurement
     return (measurement,)
 
 
 @app.cell
 def _(export_json_name_value, measNum, measurement, rewA, smoothing_select):
-    rewVersion = measurement["rewVersion"]
-    selected_smoothing = smoothing_select.value
-    if selected_smoothing == "Default":
-        selected_smoothing = None
-    response = rewA.get_measurements_id_freq_response(
-        measNum,
-        smoothing=selected_smoothing,
-    )
-    rmag = response["magnitude"]
-    dummy=export_json_name_value
+    response = {}
+    selected_smoothing = None
+    if measNum and measurement:
+        selected_smoothing = smoothing_select.value
+        if selected_smoothing == "Default":
+            selected_smoothing = None
+        response = rewA.get_measurements_id_freq_response(
+            measNum,
+            smoothing=selected_smoothing,
+        )
+    _ = export_json_name_value
     # response, rewVersion
     selected_smoothing
     response
@@ -402,14 +413,17 @@ def _(export_json_name_value, measNum, measurement, rewA, smoothing_select):
 
 @app.cell
 def _(dataH, response):
-    decoded_array = dataH.decode_array(response["magnitude"])
+    magnitude = response.get("magnitude") if isinstance(response, dict) else None
+    decoded_array = dataH.decode_array(magnitude) if magnitude else []
     # decoded_array
     return (decoded_array,)
 
 
 @app.cell
 def _(dataH, decoded_array, response):
-    freq_array = dataH.build_freq_array_from_response(response, len(decoded_array))
+    freq_array = []
+    if decoded_array and isinstance(response, dict):
+        freq_array = dataH.build_freq_array_from_response(response, len(decoded_array))
     # freq_array
     return (freq_array,)
 
@@ -423,7 +437,7 @@ def _():
 
 @app.cell
 def _(measurement):
-    measurement['rewVersion']
+    _ = measurement.get("rewVersion", "") if isinstance(measurement, dict) else ""
     return
 
 
@@ -448,6 +462,7 @@ def _(
     response,
     selected_smoothing,
     measNum,
+    parent_mdat,
 ):
     mo.stop(not export_json_name_value)
     if make_json_button.value:
@@ -463,6 +478,7 @@ def _(
             decoded_array,
             freq_array,
             smoothing=smoothing,
+            parent_mdat=parent_mdat,
             filepath=json_outpath,
         )
     else:
@@ -487,7 +503,7 @@ def _():
 
 
 @app.cell
-def _(dataH, export_all_button, measurements_all, rewA):
+def _(dataH, export_all_button, measurements_all, rewA, parent_mdat):
     mo.stop(not export_all_button.value, mo.md("Click to export all measurements."))
 
     export_all_dir = get_json_dir()
@@ -510,6 +526,7 @@ def _(dataH, export_all_button, measurements_all, rewA):
             decoded_array_all,
             freq_array_all,
             smoothing=smoothing_all,
+            parent_mdat=parent_mdat,
             filepath=str(export_all_dir),
         )
 

@@ -454,6 +454,7 @@ class Data_Handling():
     def make_marimo_json(self, filename, measurement, decoded_array,
                          freq_array=None,
                          smoothing=None,
+                         parent_mdat=None,
                          filepath: str = None):
         """ Function to make a .json file from the decoded data
 
@@ -480,6 +481,7 @@ class Data_Handling():
                                     "Start Frequency": mea["startFreq"],
                                     "End Frequency": mea["endFreq"],
                                     "Smoothing": smoothing,
+                                    "Parent MDAT": parent_mdat,
                                     }
                     }
 

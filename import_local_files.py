@@ -95,6 +95,7 @@ def parse_measurement_json(path, relative_path=None):
 
     meta = data.get("Meta Data", {}) if isinstance(data, dict) else {}
     measurement_title = meta.get("Measurement") or data.get("filename")
+    parent_mdat = meta.get("Parent MDAT") or meta.get("parent_mdat")
     if not measurement_title:
         measurement_title = Path(path).stem
     measurement_uuid = meta.get("UUID") or meta.get("uuid")
@@ -132,6 +133,7 @@ def parse_measurement_json(path, relative_path=None):
         "unit_type": None,
         "unit_number": None,
         "smoothing": meta.get("Smoothing"),
+        "parent_mdat": parent_mdat,
         "start_freq": meta.get("Start Frequency"),
         "end_freq": meta.get("End Frequency"),
         "ppo": data.get("ppo") if isinstance(data, dict) else None,
@@ -234,13 +236,13 @@ def import_files(
                 cur.execute(
                     """
                     INSERT INTO measurement
-                        (id, title, unit_type, unit_number, smoothing,
+                        (id, title, unit_type, unit_number, smoothing, parent_mdat,
                          start_freq, end_freq, ppo, freq_step, rew_version,
                          notes, measured_at,
                          freq_min, freq_max, freq_count,
                          spl_min, spl_max, spl_count)
                     VALUES
-                        (%s, %s, %s, %s, %s,
+                        (%s, %s, %s, %s, %s, %s,
                          %s, %s, %s, %s, %s,
                          %s, %s,
                          %s, %s, %s,
@@ -250,6 +252,7 @@ def import_files(
                         unit_type = EXCLUDED.unit_type,
                         unit_number = EXCLUDED.unit_number,
                         smoothing = EXCLUDED.smoothing,
+                        parent_mdat = EXCLUDED.parent_mdat,
                         start_freq = EXCLUDED.start_freq,
                         end_freq = EXCLUDED.end_freq,
                         ppo = EXCLUDED.ppo,
@@ -270,6 +273,7 @@ def import_files(
                         measurement_data["unit_type"],
                         measurement_data["unit_number"],
                         measurement_data["smoothing"],
+                        measurement_data["parent_mdat"],
                         measurement_data["start_freq"],
                         measurement_data["end_freq"],
                         measurement_data["ppo"],
