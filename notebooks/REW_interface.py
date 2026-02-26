@@ -79,9 +79,11 @@ def _():
         # Lea.websocket_connect(Lea_address, Lea.mute())
         # Lea.websocket_connect(Lea_address, Lea.unmute())
 
-        while rewA.is_server_setup() is False:
-            # wait for server to be ready
-            pass
+        if not rewA.is_server_setup():
+            raise RuntimeError(
+                "REW API not detected. If REW is already open, ensure it is an "
+                "API-enabled instance on the configured port."
+            )
 
         ifDone = False
         stillRunning = True

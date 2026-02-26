@@ -2,6 +2,7 @@ import requests
 import time
 import subprocess
 import sys
+import os
 from urllib.parse import urlencode
 from pathlib import Path
 from project_paths import get_mdat_dir, ensure_data_dirs
@@ -44,6 +45,23 @@ class REWAutomation():
             self.rew_filepath = rew_filepath
         self.port = port
         self.is_server_up = False
+        self._existing_rew_running = False
+        self._launched_rew = False
+
+        # Prefer attaching to an already-running REW API instance.
+        if self._api_is_up(self.port):
+            self.is_server_up = True
+            return
+
+        # On macOS, if REW is already open, do not relaunch. Try to attach.
+        if sys.platform == "darwin" and self._is_rew_process_running():
+            self._existing_rew_running = True
+            _detected_port = self._detect_running_api_port()
+            if _detected_port is not None:
+                self.port = _detected_port
+                self.is_server_up = True
+            return
+
         if sys.platform == "win32":
             subprocess.Popen([self.rew_filepath,
                               '-api',
@@ -51,6 +69,7 @@ class REWAutomation():
                               '-port',
                               str(self.port)
                               ])
+            self._launched_rew = True
         elif sys.platform == "darwin":
             subprocess.Popen(['open',
                               '-a',
@@ -61,6 +80,7 @@ class REWAutomation():
                               '-port',
                               str(self.port)
                               ])
+            self._launched_rew = True
 
     def get_application_commands(self):
         """ Function to get all application commands
@@ -74,7 +94,7 @@ class REWAutomation():
         get_response = self.get_request("/application/commands")
         return get_response
 
-    def is_server_setup(self):
+    def is_server_setup(self, retries: int = 30, sleep_seconds: float = 1.0):
         """ Function to check if REW is ready to accept requests
 
         Args:
@@ -83,15 +103,23 @@ class REWAutomation():
         Returns:
             is_server_up (bool): True if REW is ready, False if not
         """
-        while self.is_server_up is False:
-            try:
-                self.get_application_commands()
+        if self.is_server_up:
+            return True
+
+        for _ in range(int(retries)):
+            if self._api_is_up(self.port):
                 print("REW is ready")
                 self.is_server_up = True
-            except Exception:
-                print("REW is not ready. Retrying in 1 second.")
-                time.sleep(1)  # wait a second before attempting request again
-        return self.is_server_up
+                return True
+            print("REW is not ready. Retrying in 1 second.")
+            time.sleep(float(sleep_seconds))
+
+        if self._existing_rew_running:
+            print(
+                f"REW is running but API was not detected on port {self.port}. "
+                "Use an API-enabled REW instance or launch REW from this interface."
+            )
+        return False
 
     def get_request(self, request_ext: str):
         """ Function to make a GET request to the REW API
@@ -273,6 +301,36 @@ class REWAutomation():
                 "_raw_text": response.text,
                 "_content_type": response.headers.get("content-type", ""),
             }
+
+    def _api_is_up(self, port: int) -> bool:
+        try:
+            response = requests.get(
+                f"{self.rew_address}:{port}/application/commands",
+                timeout=1.0,
+            )
+            return response.status_code == 200
+        except Exception:
+            return False
+
+    def _detect_running_api_port(self):
+        candidate_ports = [self.port] + list(range(4735, 4741))
+        for candidate_port in candidate_ports:
+            if self._api_is_up(candidate_port):
+                return candidate_port
+        return None
+
+    def _is_rew_process_running(self) -> bool:
+        if sys.platform != "darwin":
+            return False
+        try:
+            # pgrep exit code 0 means at least one REW process is running.
+            return subprocess.call(
+                ["pgrep", "-f", "REW.app"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ) == 0
+        except Exception:
+            return False
 
     def post_measure_sweep_config(self, sweep_configuration: dict = {}):
         """HTTP POSTs measure sweep configuration to REW
