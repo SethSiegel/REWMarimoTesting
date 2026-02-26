@@ -32,12 +32,81 @@ class Lea_Settings():
         message = json.dumps(amp_deviceInfo_dictionary)
         return message
 
+    def channel_levels_get(self, channel: int = 1):
+        """Get level-related data for a channel."""
+        message_dictionary = {"leaApi": "1.0",
+                              "url": f"amp/channels/{int(channel)}/levels",
+                              "method": "get",
+                              "id": 1}
+        message = json.dumps(message_dictionary)
+        return message
+
+    def channel_output_get(self, channel: int = 1):
+        """Get output-related data for a channel."""
+        message_dictionary = {"leaApi": "1.0",
+                              "url": f"amp/channels/{int(channel)}/output",
+                              "method": "get",
+                              "id": 1}
+        message = json.dumps(message_dictionary)
+        return message
+
     def return_amp_name(self, Lea_address: str):
         amp_name_string = self.websocket_connect(Lea_address,
                                                  self.amp_deviceInfo())
         amp_name_dict = json.loads(amp_name_string)
         amp_name = amp_name_dict['result']['deviceName']
         return amp_name
+
+    def get_rms_limiter_value(
+        self,
+        Lea_address: str,
+        channel: int = 1,
+        timeout_seconds: float = 2.0,
+    ):
+        """Read RMS limiter value from LEA channel levels."""
+        response_string = self.websocket_connect(
+            Lea_address,
+            self.channel_levels_get(channel),
+            timeout_seconds=timeout_seconds,
+        )
+        response_dict = json.loads(response_string)
+        result = response_dict.get("result", {})
+
+        # Allow common LEA payload variants without breaking callers.
+        if "rmsLimiter" in result:
+            return result.get("rmsLimiter")
+        limiter_block = result.get("limiter", {})
+        if isinstance(limiter_block, dict) and "rms" in limiter_block:
+            return limiter_block.get("rms")
+        return None
+
+    def get_measured_output_voltage(
+        self,
+        Lea_address: str,
+        channel: int = 1,
+        timeout_seconds: float = 2.0,
+    ):
+        """Read measured output voltage from LEA channel output."""
+        response_string = self.websocket_connect(
+            Lea_address,
+            self.channel_output_get(channel),
+            timeout_seconds=timeout_seconds,
+        )
+        response_dict = json.loads(response_string)
+        result = response_dict.get("result", {})
+
+        # Allow common LEA payload variants without breaking callers.
+        if "voltage" in result:
+            return result.get("voltage")
+        if "measuredVoltage" in result:
+            return result.get("measuredVoltage")
+        meter_block = result.get("meter", {})
+        if isinstance(meter_block, dict):
+            if "voltage" in meter_block:
+                return meter_block.get("voltage")
+            if "measuredVoltage" in meter_block:
+                return meter_block.get("measuredVoltage")
+        return None
 
     def crossover(self):
         ''' Function to set the crossover to a certain frequency
@@ -73,8 +142,8 @@ class Lea_Settings():
         message = json.dumps(dictionary)
         return message
 
-    def websocket_connect(self, address, message):
-        with connect(address) as websocket:
+    def websocket_connect(self, address, message, timeout_seconds: float = 2.0):
+        with connect(address, open_timeout=float(timeout_seconds)) as websocket:
             websocket.send(message)
             return_message = websocket.recv()
             print(return_message)

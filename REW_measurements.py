@@ -1,4 +1,7 @@
 
+import time
+
+
 class Measurements():
     def __init__(self, rew, dataH, Lea):
         self.rew = rew
@@ -285,6 +288,151 @@ class Measurements():
         """
         unitInput = str(unitType) + " " + str(unitNumber)
         return unitInput
+
+    def REW_IO_Calibration(
+        self,
+        Lea_address: str,
+        channel: int = 1,
+        frequency_hz: float = 1000.0,
+        target_voltage_v: float = 3.0,
+        tone_seconds: float = 3.0,
+        lea_timeout_seconds: float = 2.0,
+    ):
+        """Run REW I/O calibration tone and capture LEA readings.
+
+        Workflow:
+        1. Configure REW generator for a sine tone at frequency_hz and
+           target_voltage_v.
+        2. Start tone output.
+        3. Wait tone_seconds.
+        4. Read LEA RMS limiter value and measured output voltage.
+        5. Stop tone output.
+
+        Returns:
+            dict: calibration result payload.
+        """
+        lea_rms_limiter_value = None
+        lea_measured_voltage_v = None
+        lea_read_error = None
+        rew_start_response = None
+        rew_stop_response = None
+        rew_start_error = None
+        rew_stop_error = None
+        debug_log = []
+
+        try:
+            debug_log.append("Starting REW generator tone (1000 Hz, 3.0 V).")
+            rew_start_response = self.rew.start_generator_tone(
+                frequency_hz=frequency_hz,
+                level_volts=target_voltage_v,
+            )
+            debug_log.append(f"REW start response: {rew_start_response}")
+            if isinstance(rew_start_response, dict):
+                start_status_code = rew_start_response.get("_status_code")
+                if isinstance(start_status_code, int) and start_status_code >= 400:
+                    rew_start_error = (
+                        f"HTTP {start_status_code} during generator start: "
+                        f"{rew_start_response.get('_raw_text', '')}"
+                    )
+                    debug_log.append(f"REW start error detected: {rew_start_error}")
+                start_message = str(rew_start_response.get("message", "")).lower()
+                if "not a recognised command" in start_message or "failed" in start_message:
+                    rew_start_error = rew_start_response.get("message")
+                    debug_log.append(f"REW start command error: {rew_start_error}")
+            time.sleep(float(tone_seconds))
+            debug_log.append(f"Tone wait complete ({tone_seconds} seconds).")
+            try:
+                debug_log.append("Reading LEA RMS limiter.")
+                lea_rms_limiter_value = self.Lea.get_rms_limiter_value(
+                    Lea_address=Lea_address,
+                    channel=channel,
+                    timeout_seconds=lea_timeout_seconds,
+                )
+                debug_log.append(f"LEA RMS limiter value: {lea_rms_limiter_value}")
+                debug_log.append("Reading LEA measured output voltage.")
+                lea_measured_voltage_v = self.Lea.get_measured_output_voltage(
+                    Lea_address=Lea_address,
+                    channel=channel,
+                    timeout_seconds=lea_timeout_seconds,
+                )
+                debug_log.append(f"LEA measured output voltage: {lea_measured_voltage_v}")
+            except Exception as lea_exc:
+                lea_read_error = str(lea_exc)
+                debug_log.append(f"LEA read error: {lea_read_error}")
+        except Exception as rew_start_exc:
+            rew_start_error = str(rew_start_exc)
+            debug_log.append(f"REW start exception: {rew_start_error}")
+        finally:
+            # Always attempt to stop generator even if reads fail.
+            try:
+                debug_log.append("Stopping REW generator tone.")
+                rew_stop_response = self.rew.stop_generator_tone()
+                debug_log.append(f"REW stop response: {rew_stop_response}")
+                if isinstance(rew_stop_response, dict):
+                    stop_status_code = rew_stop_response.get("_status_code")
+                    if isinstance(stop_status_code, int) and stop_status_code >= 400:
+                        rew_stop_error = (
+                            f"HTTP {stop_status_code} during generator stop: "
+                            f"{rew_stop_response.get('_raw_text', '')}"
+                        )
+                        debug_log.append(f"REW stop error detected: {rew_stop_error}")
+                    stop_message = str(rew_stop_response.get("message", "")).lower()
+                    if "not a recognised command" in stop_message or "failed" in stop_message:
+                        rew_stop_error = rew_stop_response.get("message")
+                        debug_log.append(f"REW stop command error: {rew_stop_error}")
+            except Exception as rew_stop_exc:
+                rew_stop_error = str(rew_stop_exc)
+                debug_log.append(f"REW stop exception: {rew_stop_error}")
+
+        voltage_match = False
+        if isinstance(lea_measured_voltage_v, (int, float)):
+            voltage_match = abs(float(lea_measured_voltage_v) - float(target_voltage_v)) < 1e-6
+
+        calibrate_level_value_raw = None
+        if isinstance(lea_measured_voltage_v, (int, float)) and not voltage_match:
+            calibrate_level_value_raw = lea_measured_voltage_v
+
+        calibration_required = (
+            isinstance(lea_measured_voltage_v, (int, float))
+            and not voltage_match
+        )
+        status = "ok"
+        note = "LEA measured output matches REW generator target."
+        if rew_start_error is not None:
+            status = "rew_generator_failed"
+            note = f"REW generator failed to start: {rew_start_error}"
+        elif rew_stop_error is not None:
+            status = "rew_generator_stop_failed"
+            note = f"REW generator stop reported an error: {rew_stop_error}"
+        elif lea_read_error is not None:
+            status = "lea_read_failed"
+            note = f"LEA read failed: {lea_read_error}"
+        elif lea_measured_voltage_v is None:
+            status = "lea_read_failed"
+            note = "LEA measured output voltage could not be read."
+        elif calibration_required:
+            status = "needs_calibration_input"
+            note = "Use rew_calibrate_level_value_raw for REW calibrate level input."
+
+        return {
+            "status": status,
+            "note": note,
+            "generator_frequency_hz": float(frequency_hz),
+            "rew_target_voltage_v": float(target_voltage_v),
+            "tone_duration_seconds": float(tone_seconds),
+            "lea_timeout_seconds": float(lea_timeout_seconds),
+            "rew_start_response": rew_start_response,
+            "rew_stop_response": rew_stop_response,
+            "rew_start_error": rew_start_error,
+            "rew_stop_error": rew_stop_error,
+            "lea_read_error": lea_read_error,
+            "debug_log": debug_log,
+            "lea_rms_limiter_value": lea_rms_limiter_value,
+            "lea_measured_output_voltage_v": lea_measured_voltage_v,
+            "voltage_match": voltage_match,
+            "calibration_required": calibration_required,
+            "rew_calibrate_level_value_raw": calibrate_level_value_raw,
+        }
 
 
 if __name__ == "__main__":

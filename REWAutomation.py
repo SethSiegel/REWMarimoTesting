@@ -105,7 +105,7 @@ class REWAutomation():
         """
         response = requests.get(self.rew_address +
                                 ":" + str(self.port) + request_ext)
-        return response.json()
+        return self._parse_api_response(response)
 
     def load_mdat(self, filepath: str):
         """ Function to load a .mdat file into REW
@@ -259,7 +259,20 @@ class REWAutomation():
         """
         response = requests.post(self.rew_address + ':'
                                  + str(self.port) + request_ext, json=data)
-        return response.json()
+        return self._parse_api_response(response)
+
+    def _parse_api_response(self, response):
+        """Parse REW API response without failing on empty/non-JSON bodies."""
+        try:
+            return response.json()
+        except ValueError:
+            return {
+                "_json_parse_error": True,
+                "_status_code": response.status_code,
+                "_reason": response.reason,
+                "_raw_text": response.text,
+                "_content_type": response.headers.get("content-type", ""),
+            }
 
     def post_measure_sweep_config(self, sweep_configuration: dict = {}):
         """HTTP POSTs measure sweep configuration to REW
@@ -467,6 +480,55 @@ class REWAutomation():
         post_response = self.post_request("/stepped-measurement/type",
                                           "THD vs frequency")
         return post_response
+
+    def post_generator_configuration(
+        self,
+        frequency_hz: float = 1000.0,
+        level_volts: float = 3.0,
+        signal: str = "Sine",
+    ):
+        """Configure REW's signal generator.
+
+        Args:
+            frequency_hz (float): Generator tone frequency in Hz.
+            level_volts (float): Generator level in volts.
+            signal (str): Generator signal type (default "Sine").
+
+        Returns:
+            dict: REW API response.
+        """
+        payload = {
+            "signal": signal,
+            "frequency": float(frequency_hz),
+            "level": float(level_volts),
+            "levelUnit": "V",
+        }
+        return self.post_request("/generator/configuration", payload)
+
+    def post_generator_command(self, command: str = "Play"):
+        """Send a command to REW's generator endpoint.
+
+        Args:
+            command (str): Generator command such as "Play" or "Stop".
+
+        Returns:
+            dict: REW API response.
+        """
+        return self.post_request("/generator/command", {"command": command})
+
+    def start_generator_tone(self, frequency_hz: float = 1000.0,
+                             level_volts: float = 3.0):
+        """Configure and start generator tone output."""
+        self.post_generator_configuration(
+            frequency_hz=frequency_hz,
+            level_volts=level_volts,
+            signal="Sine",
+        )
+        return self.post_generator_command("Play")
+
+    def stop_generator_tone(self):
+        """Stop generator tone output."""
+        return self.post_generator_command("Stop")
 
 
 if __name__ == "__main__":

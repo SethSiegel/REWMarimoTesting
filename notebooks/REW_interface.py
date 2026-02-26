@@ -112,6 +112,142 @@ def _():
 @app.cell
 def _():
     mo.md(r"""
+    ## I/O Calibration
+    ---
+    Run REW generator calibration before loading an `.mdat` file.
+    """)
+    return
+
+
+@app.cell
+def _():
+    io_calibration_ws = mo.ui.text(
+        label="LEA WebSocket Address",
+        value="ws://192.168.1.200:1234",
+    )
+    io_calibration_ws
+    return (io_calibration_ws,)
+
+
+@app.cell
+def _():
+    io_calibration_button = mo.ui.run_button(label="Run I/O Calibration")
+    io_calibration_button
+    return (io_calibration_button,)
+
+
+@app.cell
+def _():
+    io_calibration_result_state, set_io_calibration_result_state = mo.state(
+        {
+            "status": "idle",
+            "note": "Calibration has not been run yet.",
+            "rew_calibrate_level_value_raw": None,
+            "lea_measured_output_voltage_v": None,
+            "rew_start_error": None,
+        }
+    )
+    io_calibration_last_click, set_io_calibration_last_click = mo.state(0)
+    return (
+        io_calibration_last_click,
+        io_calibration_result_state,
+        set_io_calibration_last_click,
+        set_io_calibration_result_state,
+    )
+
+
+@app.cell
+def _(
+    io_calibration_button,
+    io_calibration_last_click,
+    io_calibration_ws,
+    rewM,
+    set_io_calibration_last_click,
+    set_io_calibration_result_state,
+):
+    mo.stop(not io_calibration_button.value, mo.md("Click **Run I/O Calibration** to start."))
+    mo.stop(
+        io_calibration_button.value <= io_calibration_last_click(),
+        mo.md("Calibration result is up to date."),
+    )
+
+    ws_value = io_calibration_ws.value.strip()
+    if not ws_value:
+        _io_calibration_result_run = {
+            "status": "failed",
+            "note": "LEA WebSocket address is required.",
+        }
+    else:
+        try:
+            with mo.status.spinner(title="Running I/O calibration..."):
+                _io_calibration_result_run = rewM.REW_IO_Calibration(
+                    Lea_address=ws_value,
+                    channel=1,
+                    frequency_hz=1000.0,
+                    target_voltage_v=3.0,
+                    tone_seconds=3.0,
+                    lea_timeout_seconds=2.0,
+                )
+        except Exception as calibration_exc:
+            _io_calibration_result_run = {
+                "status": "failed",
+                "note": str(calibration_exc),
+            }
+
+    set_io_calibration_result_state(_io_calibration_result_run)
+    set_io_calibration_last_click(io_calibration_button.value)
+    return
+
+
+@app.cell
+def _(io_calibration_result_state):
+    _io_calibration_result_view = io_calibration_result_state()
+    _status_text = _io_calibration_result_view.get("status", "idle")
+    _debug_log_lines = _io_calibration_result_view.get("debug_log") or []
+    if _debug_log_lines:
+        _debug_md = "  \n".join([f"- {line}" for line in _debug_log_lines])
+    else:
+        _debug_md = "- No debug log entries."
+    if _status_text == "idle":
+        _status_md = (
+            "Calibration has not been run yet."
+            f"  \nDebug log:"
+            f"  \n{_debug_md}"
+        )
+    elif _status_text == "ok":
+        raw_value = _io_calibration_result_view.get("rew_calibrate_level_value_raw")
+        if raw_value is None:
+            raw_value = _io_calibration_result_view.get("lea_measured_output_voltage_v")
+        rew_started = _io_calibration_result_view.get("rew_start_error") is None
+        _status_md = (
+            "<span style='color: green; font-weight: 700;'>Calibrated</span>"
+            f"  \nREW generator started: `{rew_started}`"
+            f"  \nRaw level value: `{raw_value}`"
+            f"  \nDebug log:"
+            f"  \n{_debug_md}"
+        )
+    else:
+        failure_note = _io_calibration_result_view.get("note", "Calibration failed.")
+        raw_value = _io_calibration_result_view.get("rew_calibrate_level_value_raw")
+        if raw_value is None:
+            raw_value = _io_calibration_result_view.get("lea_measured_output_voltage_v")
+        rew_started = _io_calibration_result_view.get("rew_start_error") is None
+        _status_md = (
+            "<span style='color: red; font-weight: 700;'>Calibration failed</span>"
+            f"  \n{failure_note}"
+            f"  \nREW generator started: `{rew_started}`"
+            f"  \nRaw level value: `{raw_value}`"
+            f"  \nDebug log:"
+            f"  \n{_debug_md}"
+        )
+    _calibration_status_widget = mo.md(_status_md)
+    _calibration_status_widget
+    return
+
+
+@app.cell
+def _():
+    mo.md(r"""
     ## Load .mdat files
     ---
     Choose a REW measurement file to load.
