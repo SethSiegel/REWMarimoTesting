@@ -125,7 +125,7 @@ def _():
 def _():
     io_calibration_ws = mo.ui.text(
         label="LEA WebSocket Address",
-        value="ws://192.168.1.200:1234",
+        value="ws://192.168.4.73:1234",
     )
     io_calibration_ws
     return (io_calibration_ws,)
@@ -149,29 +149,17 @@ def _():
             "rew_start_error": None,
         }
     )
-    io_calibration_last_click, set_io_calibration_last_click = mo.state(0)
-    return (
-        io_calibration_last_click,
-        io_calibration_result_state,
-        set_io_calibration_last_click,
-        set_io_calibration_result_state,
-    )
+    return io_calibration_result_state, set_io_calibration_result_state
 
 
 @app.cell
 def _(
     io_calibration_button,
-    io_calibration_last_click,
     io_calibration_ws,
     rewM,
-    set_io_calibration_last_click,
     set_io_calibration_result_state,
 ):
     mo.stop(not io_calibration_button.value, mo.md("Click **Run I/O Calibration** to start."))
-    mo.stop(
-        io_calibration_button.value <= io_calibration_last_click(),
-        mo.md("Calibration result is up to date."),
-    )
 
     ws_value = io_calibration_ws.value.strip()
     if not ws_value:
@@ -197,7 +185,6 @@ def _(
             }
 
     set_io_calibration_result_state(_io_calibration_result_run)
-    set_io_calibration_last_click(io_calibration_button.value)
     return
 
 

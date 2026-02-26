@@ -75,6 +75,8 @@ class Lea_Settings():
         # Allow common LEA payload variants without breaking callers.
         if "rmsLimiter" in result:
             return result.get("rmsLimiter")
+        if "totalRmsGainReduction" in result:
+            return result.get("totalRmsGainReduction")
         limiter_block = result.get("limiter", {})
         if isinstance(limiter_block, dict) and "rms" in limiter_block:
             return limiter_block.get("rms")
@@ -86,7 +88,20 @@ class Lea_Settings():
         channel: int = 1,
         timeout_seconds: float = 2.0,
     ):
-        """Read measured output voltage from LEA channel output."""
+        """Read measured output voltage from LEA channel levels/output."""
+        response_string = self.websocket_connect(
+            Lea_address,
+            self.channel_levels_get(channel),
+            timeout_seconds=timeout_seconds,
+        )
+        response_dict = json.loads(response_string)
+        result = response_dict.get("result", {})
+
+        if "level_volts" in result:
+            return result.get("level_volts")
+        if "levelVolts" in result:
+            return result.get("levelVolts")
+
         response_string = self.websocket_connect(
             Lea_address,
             self.channel_output_get(channel),
