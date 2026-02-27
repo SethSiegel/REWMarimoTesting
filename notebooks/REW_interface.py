@@ -172,7 +172,7 @@ def _(
             with mo.status.spinner(title="Running I/O calibration..."):
                 _io_calibration_result_run = rewM.REW_IO_Calibration(
                     Lea_address=ws_value,
-                    channel=1,
+                    channel=2,
                     frequency_hz=1000.0,
                     target_voltage_v=3.0,
                     tone_seconds=3.0,

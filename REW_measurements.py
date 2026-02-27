@@ -292,11 +292,12 @@ class Measurements():
     def REW_IO_Calibration(
         self,
         Lea_address: str,
-        channel: int = 1,
+        channel: int = 2,
         frequency_hz: float = 1000.0,
         target_voltage_v: float = 3.0,
         tone_seconds: float = 3.0,
         lea_timeout_seconds: float = 2.0,
+        sample_delay_seconds: float = 0.75,
     ):
         """Run REW I/O calibration tone and capture LEA readings.
 
@@ -304,9 +305,9 @@ class Measurements():
         1. Configure REW generator for a sine tone at frequency_hz and
            target_voltage_v.
         2. Start tone output.
-        3. Wait tone_seconds.
+        3. Wait a short settle delay while tone is active.
         4. Read LEA RMS limiter value and measured output voltage.
-        5. Stop tone output.
+        5. Keep tone running for remaining time, then stop output.
 
         Returns:
             dict: calibration result payload.
@@ -339,8 +340,14 @@ class Measurements():
                 if "not a recognised command" in start_message or "failed" in start_message:
                     rew_start_error = rew_start_response.get("message")
                     debug_log.append(f"REW start command error: {rew_start_error}")
-            time.sleep(float(tone_seconds))
-            debug_log.append(f"Tone wait complete ({tone_seconds} seconds).")
+            _tone_total = max(0.0, float(tone_seconds))
+            _sample_delay = max(0.0, min(float(sample_delay_seconds), _tone_total))
+            if _sample_delay > 0:
+                time.sleep(_sample_delay)
+            debug_log.append(
+                f"Sampling LEA during tone at t={_sample_delay:.2f}s "
+                f"(total tone { _tone_total:.2f}s)."
+            )
             try:
                 debug_log.append("Reading LEA RMS limiter.")
                 lea_rms_limiter_value = self.Lea.get_rms_limiter_value(
@@ -359,6 +366,10 @@ class Measurements():
             except Exception as lea_exc:
                 lea_read_error = str(lea_exc)
                 debug_log.append(f"LEA read error: {lea_read_error}")
+            _remaining_tone = max(0.0, _tone_total - _sample_delay)
+            if _remaining_tone > 0:
+                time.sleep(_remaining_tone)
+            debug_log.append("Tone duration complete.")
         except Exception as rew_start_exc:
             rew_start_error = str(rew_start_exc)
             debug_log.append(f"REW start exception: {rew_start_error}")
@@ -421,6 +432,8 @@ class Measurements():
             "rew_target_voltage_v": float(target_voltage_v),
             "tone_duration_seconds": float(tone_seconds),
             "lea_timeout_seconds": float(lea_timeout_seconds),
+            "sample_delay_seconds": float(sample_delay_seconds),
+            "lea_channel": int(channel),
             "rew_start_response": rew_start_response,
             "rew_stop_response": rew_stop_response,
             "rew_start_error": rew_start_error,
