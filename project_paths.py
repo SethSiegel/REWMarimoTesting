@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 
 _dotenv_loaded = False
+_resolved_data_root = None
 
 
 def _load_dotenv():
@@ -33,12 +34,34 @@ def get_repo_root(start_path=None):
     return start.parent
 
 
+def _can_write_root(path: Path) -> bool:
+    """Return True if path can be created/written."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".rew_write_probe"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        return True
+    except Exception:
+        return False
+
+
 def get_data_root():
+    global _resolved_data_root
     _load_dotenv()
+    if _resolved_data_root is not None:
+        return _resolved_data_root
+
+    local_root = (get_repo_root() / "data").resolve()
     env_path = os.getenv("REW_DATA_DIR")
     if env_path:
-        return Path(env_path).expanduser().resolve()
-    return get_repo_root() / "data"
+        env_root = Path(env_path).expanduser().resolve()
+        if _can_write_root(env_root):
+            _resolved_data_root = env_root
+            return _resolved_data_root
+
+    _resolved_data_root = local_root
+    return _resolved_data_root
 
 
 def get_mdat_dir():
