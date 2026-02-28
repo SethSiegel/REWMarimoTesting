@@ -297,7 +297,7 @@ class Measurements():
         target_voltage_v: float = 3.0,
         tone_seconds: float = 3.0,
         lea_timeout_seconds: float = 2.0,
-        sample_delay_seconds: float = 0.75,
+        sample_delay_seconds: float = 1.5,
     ):
         """Run REW I/O calibration tone and capture LEA readings.
 
@@ -314,6 +314,8 @@ class Measurements():
         """
         lea_rms_limiter_value = None
         lea_measured_voltage_v = None
+        rew_calibrated_generator_voltage_v = None
+        rew_calibration_apply_response = None
         lea_read_error = None
         rew_start_response = None
         rew_stop_response = None
@@ -396,34 +398,52 @@ class Measurements():
                 debug_log.append(f"REW stop exception: {rew_stop_error}")
 
         voltage_match = False
+        measured_voltage_float = None
         if isinstance(lea_measured_voltage_v, (int, float)):
-            voltage_match = abs(float(lea_measured_voltage_v) - float(target_voltage_v)) < 1e-6
+            measured_voltage_float = float(lea_measured_voltage_v)
+            voltage_match = abs(measured_voltage_float - float(target_voltage_v)) < 1e-6
 
         calibrate_level_value_raw = None
-        if isinstance(lea_measured_voltage_v, (int, float)) and not voltage_match:
-            calibrate_level_value_raw = lea_measured_voltage_v
+        if measured_voltage_float is not None and measured_voltage_float > 0:
+            calibrate_level_value_raw = measured_voltage_float
 
         calibration_required = (
-            isinstance(lea_measured_voltage_v, (int, float))
+            measured_voltage_float is not None
+            and measured_voltage_float > 0
             and not voltage_match
         )
+
+        calibration_applied = False
+        if calibration_required:
+            rew_calibrated_generator_voltage_v = (
+                float(target_voltage_v) * float(target_voltage_v)
+            ) / measured_voltage_float
+            rew_calibration_apply_response = self.rew.post_generator_configuration(
+                frequency_hz=frequency_hz,
+                level_volts=rew_calibrated_generator_voltage_v,
+                signal="Sine",
+            )
+            calibration_applied = True
+            debug_log.append(
+                "Calibration applied from LEA level_volts. "
+                f"New REW generator voltage: {rew_calibrated_generator_voltage_v}"
+            )
+
         status = "ok"
-        note = "LEA measured output matches REW generator target."
-        if rew_start_error is not None:
-            status = "rew_generator_failed"
-            note = f"REW generator failed to start: {rew_start_error}"
-        elif rew_stop_error is not None:
-            status = "rew_generator_stop_failed"
-            note = f"REW generator stop reported an error: {rew_stop_error}"
-        elif lea_read_error is not None:
+        note = "Calibration succeeded."
+        if lea_read_error is not None:
             status = "lea_read_failed"
             note = f"LEA read failed: {lea_read_error}"
-        elif lea_measured_voltage_v is None:
+        elif measured_voltage_float is None or measured_voltage_float == 0:
             status = "lea_read_failed"
-            note = "LEA measured output voltage could not be read."
-        elif calibration_required:
-            status = "needs_calibration_input"
-            note = "Use rew_calibrate_level_value_raw for REW calibrate level input."
+            note = "LEA measured output voltage was zero or unavailable."
+        elif calibration_applied:
+            note = (
+                "Calibration applied using LEA measured voltage. "
+                f"REW generator voltage set to {rew_calibrated_generator_voltage_v} V."
+            )
+        elif voltage_match:
+            note = "LEA measured output matches REW generator target."
 
         return {
             "status": status,
@@ -445,6 +465,8 @@ class Measurements():
             "voltage_match": voltage_match,
             "calibration_required": calibration_required,
             "rew_calibrate_level_value_raw": calibrate_level_value_raw,
+            "rew_calibrated_generator_voltage_v": rew_calibrated_generator_voltage_v,
+            "rew_calibration_apply_response": rew_calibration_apply_response,
         }
 
 

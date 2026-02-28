@@ -6,12 +6,16 @@
 #     "pyzmq>=27.1.0",
 #     "requests>=2.32.5",
 # ]
+# [tool.marimo.opengraph]
+# title = "REW Sweep + Export Tool"
+# description = "REW measurement automation and LEA calibration interface."
+# image = "https://www.roomeqwizard.com/help/images/REW%20logo.png"
 # ///
 
 import marimo
 
 __generated_with = "0.19.7"
-app = marimo.App()
+app = marimo.App(app_title="REW Sweep + Export Tool")
 
 with app.setup:
     import sys

@@ -7,12 +7,16 @@
 #     "pyzmq>=27.1.0",
 #     "requests>=2.32.5",
 # ]
+# [tool.marimo.opengraph]
+# title = "REW Metadata Dashboard"
+# description = "Browse and manage REW measurements stored in Postgres."
+# image = "https://www.postgresql.org/media/img/about/press/elephant.png"
 # ///
 
 import marimo
 
 __generated_with = "0.19.11"
-app = marimo.App()
+app = marimo.App(app_title="REW Metadata Dashboard")
 
 with app.setup:
     import sys
