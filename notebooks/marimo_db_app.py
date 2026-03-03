@@ -76,12 +76,15 @@ def _():
     connect_last_value, set_connect_last_value = mo.state(0)
     records_state, set_records_state = mo.state([])
     last_refresh_state, set_last_refresh_state = mo.state(None)
-    connect_last_value, records_state, last_refresh_state
+    db_connect_error_state, set_db_connect_error_state = mo.state("")
+    connect_last_value, records_state, last_refresh_state, db_connect_error_state
     return (
         connect_last_value,
+        db_connect_error_state,
         last_refresh_state,
         records_state,
         set_connect_last_value,
+        set_db_connect_error_state,
         set_last_refresh_state,
         set_records_state,
     )
@@ -97,6 +100,7 @@ def _(
     db_port,
     db_user,
     set_connect_last_value,
+    set_db_connect_error_state,
     set_last_refresh_state,
     set_records_state,
     title_filter,
@@ -106,15 +110,20 @@ def _(
     mo.stop(not connect_button.value, mo.md("Click **Connect** to load data."))
     mo.stop(connect_button.value <= connect_last_value(), mo.md("Click **Connect** to reconnect."))
 
-    _conn = psycopg.connect(
-        host=db_host.value.strip(),
-        port=int(db_port.value.strip()),
-        dbname=db_name.value.strip(),
-        user=db_user.value.strip(),
-        password=db_pass.value,
-    )
-    _conn.autocommit = True
+    _records = []
+    _connect_error = ""
+    _conn = None
     try:
+        _conn = psycopg.connect(
+            host=db_host.value.strip(),
+            port=int(db_port.value.strip()),
+            dbname=db_name.value.strip(),
+            user=db_user.value.strip(),
+            password=db_pass.value,
+            connect_timeout=5,
+            options="-c statement_timeout=12000 -c lock_timeout=3000",
+        )
+        _conn.autocommit = True
         with _conn.cursor() as _cur:
             _cur.execute(
                 """
@@ -171,17 +180,20 @@ def _(
             _rows = _cur.fetchall()
             _columns = [desc.name for desc in _cur.description]
 
-        _records = []
         for _row in _rows:
             _record = dict(zip(_columns, _row))
             for _key, _value in _record.items():
                 if _value is None:
                     _record[_key] = ""
             _records.append(_record)
+    except Exception as _db_exc:
+        _connect_error = str(_db_exc)
     finally:
-        _conn.close()
+        if _conn is not None:
+            _conn.close()
 
     set_records_state(_records)
+    set_db_connect_error_state(_connect_error)
     set_connect_last_value(connect_button.value)
     set_last_refresh_state(datetime.now())
     return
@@ -313,7 +325,9 @@ def _():
 
 
 @app.cell
-def _(last_refresh_state):
+def _(db_connect_error_state, last_refresh_state):
+    if db_connect_error_state():
+        mo.md(f"Database connection failed: `{db_connect_error_state()}`")
     if last_refresh_state() is None:
         mo.md("**Last refreshed:** —")
     else:
