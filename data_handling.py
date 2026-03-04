@@ -487,6 +487,7 @@ class Data_Handling():
 
         ensure_data_dirs()
         out_dir = get_json_dir() if filepath is None else filepath
+        os.makedirs(str(out_dir), exist_ok=True)
         safe_name = self.sanitize_filename(filename)
         file_path = os.path.join(str(out_dir), f"{safe_name}.json")
 

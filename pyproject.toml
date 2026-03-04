@@ -8,6 +8,7 @@ dependencies = [
     "jsonpickle>=4.1.1",
     "matplotlib==3.10.8",
     "marimo>=0.19.11",
+    "pyzmq>=27.1.0",
     "psycopg[binary]==3.3.2",
     "requests>=2.32.5",
 ]

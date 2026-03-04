@@ -479,6 +479,38 @@ class REWAutomation():
         post_response = self.post_request("/measurements/command", body)
         return post_response
 
+    def post_measurements_command_clearall(self):
+        """Clear all loaded measurements in REW.
+
+        REW command labels vary by version; try a short fallback list.
+        """
+        _fallback_commands = [
+            "Clear all",
+            "Delete all",
+            "Clear All",
+            "Delete All",
+        ]
+        _last_response = None
+        for _command in _fallback_commands:
+            _body = {"command": _command}
+            _response = self.post_request("/measurements/command", _body)
+            _last_response = _response
+            if isinstance(_response, dict):
+                _message = str(_response.get("message", "")).lower()
+                if "not a recognised command" in _message:
+                    continue
+            return {
+                "status": "ok",
+                "command_used": _command,
+                "response": _response,
+            }
+        return {
+            "status": "failed",
+            "command_used": None,
+            "response": _last_response,
+            "error": "No supported clear-all command found for this REW version.",
+        }
+
     def post_command_shutdown(self):
         """ Function to shutdown REW
 
