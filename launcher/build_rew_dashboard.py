@@ -68,10 +68,16 @@ def main() -> int:
         print(f"[ERROR] Build completed but artifact not found: {dist_path}")
         return 1
 
-    shutil.copy2(dist_path, launcher_copy_path)
     print("")
     print(f"Build complete: {dist_path}")
-    print(f"Copied to: {launcher_copy_path}")
+    try:
+        shutil.copy2(dist_path, launcher_copy_path)
+        print(f"Copied to: {launcher_copy_path}")
+    except PermissionError:
+        print(
+            "[WARN] Could not overwrite launcher copy because it is in use. "
+            "Use the file in launcher/dist or close the running launcher and rebuild."
+        )
     return 0
 
 

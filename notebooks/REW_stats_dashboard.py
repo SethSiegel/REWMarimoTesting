@@ -79,20 +79,17 @@ def _():
 def _():
     ana_records_state, ana_set_records_state = mo.state([])
     ana_loaded_at_state, ana_set_loaded_at_state = mo.state(None)
-    ana_last_load_click_state, ana_set_last_load_click_state = mo.state(0)
     ana_load_status_state, ana_set_load_status_state = mo.state("idle")
     ana_load_error_state, ana_set_load_error_state = mo.state("")
     ana_load_diag_state, ana_set_load_diag_state = mo.state({})
     return (
         ana_load_error_state,
         ana_load_diag_state,
-        ana_last_load_click_state,
         ana_load_status_state,
         ana_loaded_at_state,
         ana_records_state,
         ana_set_load_error_state,
         ana_set_load_diag_state,
-        ana_set_last_load_click_state,
         ana_set_load_status_state,
         ana_set_loaded_at_state,
         ana_set_records_state,
@@ -106,20 +103,14 @@ def _(
     ana_db_pass,
     ana_db_port,
     ana_db_user,
-    ana_last_load_click_state,
     ana_load_button,
     ana_set_load_error_state,
     ana_set_load_diag_state,
-    ana_set_last_load_click_state,
     ana_set_load_status_state,
     ana_set_loaded_at_state,
     ana_set_records_state,
 ):
     mo.stop(not ana_load_button.value, mo.md("Click **Load JSON Records From Database** to begin."))
-    mo.stop(
-        ana_load_button.value <= ana_last_load_click_state(),
-        mo.md("Records already loaded for this click."),
-    )
 
     _records = []
     _load_status = "ok"
@@ -199,7 +190,6 @@ def _(
     ana_set_load_status_state(_load_status)
     ana_set_load_error_state(_load_error)
     ana_set_load_diag_state(_load_diag)
-    ana_set_last_load_click_state(ana_load_button.value)
     return
 
 
@@ -233,46 +223,185 @@ def _(
 
 
 @app.cell
-def _(ana_records_state):
-    _tbl = mo.ui.table(ana_records_state(), label="JSON Records")
-    _tbl
+def _():
+    mo.md(
+        r"""
+    ## JSON Records
+    Filter by MDAT name and source folder, then choose records for analysis.
+    """
+    )
     return
 
 
 @app.cell
 def _(ana_records_state):
-    _records = ana_records_state()
-    _items = []
-    for _r in _records:
-        _file_id = _r.get("file_id")
-        if not _file_id:
-            continue
-        _title = _r.get("title") or "(untitled)"
-        _unit_type = _r.get("unit_type") or "?"
-        _unit_number = _r.get("unit_number") or "?"
-        _parent = _r.get("parent_mdat") or "-"
-        _label = f"{_file_id} | {_title} | {_unit_type}-{_unit_number} | parent:{_parent}"
-        _items.append((_label, _r))
+    _folders = set()
+    for _record in ana_records_state():
+        _relative_path = str(_record.get("relative_path") or "").strip()
+        _relative_parent = pathlib.Path(_relative_path).parent.as_posix() if _relative_path else ""
+        _folder = "" if _relative_parent == "." else _relative_parent
+        _folders.add(_folder)
 
-    _items.sort(key=lambda x: x[0])
-    ana_record_label_to_record = {lbl: rec for lbl, rec in _items}
-    ana_record_select = mo.ui.multiselect(
-        options=[lbl for lbl, _ in _items],
-        value=[],
-        label="Select records for statistical analysis",
+    _folder_options = ["All folders"]
+    _folder_options.extend(sorted(f if f else "(root)" for f in _folders))
+    ana_folder_dropdown = mo.ui.dropdown(
+        options=_folder_options,
+        value="All folders",
+        label="Folder",
     )
-    ana_record_select
-    return ana_record_label_to_record, ana_record_select
+    return (ana_folder_dropdown,)
 
 
 @app.cell
-def _(ana_record_label_to_record, ana_record_select):
+def _():
+    ana_mdat_filter = mo.ui.text(label="Filter by MDAT name", value="")
+    ana_folder_filter = mo.ui.text(label="Filter by folder/path", value="")
+    return ana_folder_filter, ana_mdat_filter
+
+
+@app.cell
+def _(ana_folder_dropdown, ana_folder_filter, ana_mdat_filter):
+    mo.hstack(
+        [ana_mdat_filter, ana_folder_dropdown, ana_folder_filter],
+        justify="start",
+        gap=1,
+    )
+    return
+
+
+@app.cell
+def _():
+    mo.md(
+        r"""
+    **Selection workflow**
+    1. Filter records by MDAT/folder.
+    2. Use the selector below to choose records for analysis.
+    3. Confirm selection in the "Selected Records" table.
+    """
+    )
+    return
+
+
+@app.cell
+def _(ana_folder_dropdown, ana_folder_filter, ana_mdat_filter, ana_records_state):
+    _records = ana_records_state()
+    _mdat_query = ana_mdat_filter.value.strip().lower()
+    _folder_query = ana_folder_filter.value.strip().lower()
+    _folder_dropdown_value = (ana_folder_dropdown.value or "All folders").strip()
+    _folder_dropdown_target = "" if _folder_dropdown_value == "(root)" else _folder_dropdown_value
+    ana_filtered_records = []
+
+    for _record in _records:
+        _relative_path = str(_record.get("relative_path") or "").strip()
+        _relative_parent = pathlib.Path(_relative_path).parent.as_posix() if _relative_path else ""
+        _folder = "" if _relative_parent == "." else _relative_parent
+        _parent_mdat = str(_record.get("parent_mdat") or "").strip()
+        _title = str(_record.get("title") or "").strip()
+
+        if _mdat_query and _mdat_query not in _parent_mdat.lower():
+            continue
+        if _folder_dropdown_value != "All folders" and _folder != _folder_dropdown_target:
+            continue
+        if _folder_query and _folder_query not in _folder.lower():
+            continue
+
+        _enriched_record = dict(_record)
+        _enriched_record["_folder"] = _folder
+        _enriched_record["_parent_mdat"] = _parent_mdat
+        _enriched_record["_title"] = _title
+        ana_filtered_records.append(_enriched_record)
+
+    ana_filtered_records.sort(
+        key=lambda r: (
+            str(r.get("_parent_mdat", "")).lower(),
+            str(r.get("_title", "")).lower(),
+            str(r.get("file_id", "")),
+        )
+    )
+    return (ana_filtered_records,)
+
+
+@app.cell
+def _(ana_filtered_records, ana_records_state):
+    _table_rows = []
+    for _record in ana_filtered_records:
+        _table_rows.append(
+            {
+                "mdat_name": _record.get("_parent_mdat", ""),
+                "measurement_title": _record.get("_title", ""),
+                "folder": _record.get("_folder", ""),
+                "unit_type": _record.get("unit_type", ""),
+                "unit_number": _record.get("unit_number", ""),
+                "file_id": _record.get("file_id", ""),
+                "measurement_id": _record.get("measurement_id", ""),
+                "relative_path": _record.get("relative_path", ""),
+            }
+        )
+    _tbl_label = f"JSON Records ({len(_table_rows)} shown of {len(ana_records_state())})"
+    _tbl = mo.ui.table(_table_rows, label=_tbl_label)
+    _tbl
+    return
+
+
+@app.cell
+def _(ana_filtered_records):
+    ana_record_items = []
+    for _r in ana_filtered_records:
+        _file_id = _r.get("file_id")
+        if not _file_id:
+            continue
+        _title = _r.get("_title") or "(untitled)"
+        _unit_type = _r.get("unit_type") or "?"
+        _unit_number = _r.get("unit_number") or "?"
+        _parent = _r.get("_parent_mdat") or "-"
+        _folder = _r.get("_folder") or "-"
+        _label = (
+            f"MDAT:{_parent} | MEAS:{_title} | FOLDER:{_folder} | "
+            f"UNIT:{_unit_type}-{_unit_number} | FILE:{_file_id}"
+        )
+        ana_record_items.append((_label, _r))
+
+    ana_record_items.sort(key=lambda x: x[0])
+    ana_record_label_to_record = {lbl: rec for lbl, rec in ana_record_items}
+    ana_record_select = mo.ui.multiselect(
+        options=[lbl for lbl, _ in ana_record_items],
+        value=[],
+        label="Select records for statistical analysis (multi-select)",
+    )
+    ana_record_select
+    return ana_record_items, ana_record_label_to_record, ana_record_select
+
+
+@app.cell
+def _(ana_record_items, ana_record_label_to_record, ana_record_select):
     ana_selected_records = [
         ana_record_label_to_record[lbl]
         for lbl in ana_record_select.value
         if lbl in ana_record_label_to_record
     ]
+    ana_selection_status_md = mo.md(
+        f"Selected `{len(ana_selected_records)}` of `{len(ana_record_items)}` filtered records."
+    )
+    ana_selection_status_md
     return (ana_selected_records,)
+
+
+@app.cell
+def _(ana_selected_records):
+    _selected_rows = []
+    for _record in ana_selected_records:
+        _selected_rows.append(
+            {
+                "mdat_name": _record.get("_parent_mdat", ""),
+                "measurement_title": _record.get("_title", ""),
+                "folder": _record.get("_folder", ""),
+                "file_id": _record.get("file_id", ""),
+                "measurement_id": _record.get("measurement_id", ""),
+            }
+        )
+    _selected_tbl = mo.ui.table(_selected_rows, label="Selected Records")
+    _selected_tbl
+    return
 
 
 @app.cell
@@ -300,33 +429,20 @@ def _():
 @app.cell
 def _():
     ana_result_state, ana_set_result_state = mo.state(None)
-    ana_last_run_click_state, ana_set_last_run_click_state = mo.state(0)
-    return (
-        ana_last_run_click_state,
-        ana_result_state,
-        ana_set_last_run_click_state,
-        ana_set_result_state,
-    )
+    return ana_result_state, ana_set_result_state
 
 
 @app.cell
 def _(
-    ana_last_run_click_state,
     ana_max_hz,
     ana_min_hz,
     ana_ppo,
-    ana_records_state,
     ana_run_button,
     ana_selected_records,
-    ana_set_last_run_click_state,
     ana_set_result_state,
     ana_tol_db,
 ):
     mo.stop(not ana_run_button.value, mo.md("Click **Run Statistical Analysis** to compute curves."))
-    mo.stop(
-        ana_run_button.value <= ana_last_run_click_state(),
-        mo.md("Analysis already computed for this click."),
-    )
     mo.stop(not ana_selected_records, mo.md("Select at least one JSON record."))
 
     _data_root = get_data_root()
@@ -475,7 +591,6 @@ def _(
     }
 
     ana_set_result_state(_result_payload)
-    ana_set_last_run_click_state(ana_run_button.value)
     return
 
 

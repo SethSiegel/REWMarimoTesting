@@ -20,28 +20,28 @@ def _venv_paths(repo_dir: Path) -> tuple[Path, Path]:
 
 
 def _find_repo_dir() -> Path:
-    candidates: list[Path] = []
+    seeds: list[Path] = []
 
     if getattr(sys, "frozen", False):
-        exe_dir = Path(sys.executable).resolve().parent
-        candidates.extend([exe_dir, exe_dir.parent, Path.cwd()])
+        seeds.append(Path(sys.executable).resolve().parent)
     else:
-        script_dir = Path(__file__).resolve().parent
-        candidates.extend([script_dir, script_dir.parent, Path.cwd()])
+        seeds.append(Path(__file__).resolve().parent)
+    seeds.append(Path.cwd())
 
     seen = set()
-    unique_candidates: list[Path] = []
-    for candidate in candidates:
-        key = str(candidate)
-        if key not in seen:
-            seen.add(key)
-            unique_candidates.append(candidate)
+    search_paths: list[Path] = []
+    for seed in seeds:
+        for candidate in [seed, *seed.parents]:
+            key = str(candidate)
+            if key not in seen:
+                seen.add(key)
+                search_paths.append(candidate)
 
-    for candidate in unique_candidates:
+    for candidate in search_paths:
         if (candidate / "notebooks").is_dir() and (candidate / "pyproject.toml").exists():
             return candidate
 
-    return unique_candidates[0]
+    return seeds[0]
 
 
 def _pick_command(repo_dir: Path) -> list[str] | None:
