@@ -3,3 +3,14 @@ data/
 pgdata/
 __pycache__/
 .DS_Store
+dist/
+build/
+*.spec
+launcher_error.log
+notebooks/__marimo__/
+REW_Dashboard_Launcher.exe
+REW_Dashboard_Launcher
+launcher/dist/
+launcher/build/
+launcher/launcher_error.log
+launcher/*.spec

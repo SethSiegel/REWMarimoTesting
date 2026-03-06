@@ -11,13 +11,63 @@ uv sync
 ```
 2. Start marimo in notebook tile view for this repo:
 ```bash
-uv run marimo edit notebooks
+uv run marimo run notebooks --sandbox
 ```
 3. In the browser dashboard, open:
 ```text
 REW Sweep + Export Tool
 REW Metadata Dashboard
 ```
+
+## Desktop Launcher (Windows)
+Use `launcher/Launch_REW_Dashboard.cmd` to start the marimo dashboard directly.
+
+What it runs:
+```bash
+uv run marimo run notebooks --sandbox
+```
+
+To launch from Desktop:
+1. Right-click `launcher\Launch_REW_Dashboard.cmd` -> `Send to` -> `Desktop (create shortcut)`.
+2. Double-click the shortcut.
+
+## Native Launcher Build (Windows/macOS/Linux)
+Build a native launcher on each platform:
+
+Windows:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\launcher\build_rew_dashboard_exe.ps1
+```
+
+macOS / Linux:
+```bash
+bash ./launcher/build_rew_dashboard.sh
+```
+
+These wrappers call `launcher/build_rew_dashboard.py`.
+Build output:
+
+Windows:
+```text
+launcher\dist\REW_Dashboard_Launcher.exe
+```
+also copied to:
+```text
+launcher\REW_Dashboard_Launcher.exe
+```
+
+macOS / Linux:
+```text
+launcher/dist/REW_Dashboard_Launcher
+```
+also copied to:
+```text
+launcher/REW_Dashboard_Launcher
+```
+
+Then (Windows):
+1. Right-click `launcher\REW_Dashboard_Launcher.exe` (or `launcher\dist\REW_Dashboard_Launcher.exe`) -> `Send to` -> `Desktop (create shortcut)`.
+2. Double-click the desktop shortcut to launch the marimo notebooks dashboard.
 
 ## What Each Program Does
 1. `notebooks/REW_interface.py`

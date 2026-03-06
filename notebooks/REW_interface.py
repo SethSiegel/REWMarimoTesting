@@ -41,12 +41,14 @@ def _():
     # REW Sweep + Export Tool
     ---
 
-    This notebook guides you through:
-    1. Loading a `.mdat` file
-    2. Entering unit info (used for naming)
-    3. Running sweeps
-    4. Saving measurements in REW
-    5. Exporting JSON (single or all)
+    End-to-end workflow:
+    1. Launch/attach REW session
+    2. Optional I/O calibration
+    3. Load `.mdat`
+    4. Set naming fields
+    5. Run sweeps
+    6. Save `.mdat` in REW
+    7. Export JSON (single or all)
     """)
     return
 
@@ -54,73 +56,257 @@ def _():
 @app.cell
 def _():
     mo.md(r"""
-    ## Setup
+    ## 1) REW Session
     ---
-    Connect to REW and initialize the automation helper classes.
+    Start by launching or attaching to REW.
+    Use session controls here for launch, clear, and shutdown.
     """)
     return
 
 
 @app.cell
 def _():
-    if __name__ == "__main__":
-        # instantiate on local host port 4735
+    rew_launch_button = mo.ui.run_button(label="Launch / Attach REW")
+    clear_rew_measurements_button = mo.ui.run_button(label="Clear All Measurements")
+    exit_rew_session_button = mo.ui.run_button(label="Shutdown REW")
+    session_controls = mo.hstack(
+        [rew_launch_button, clear_rew_measurements_button, exit_rew_session_button]
+    )
+    session_controls
+    return clear_rew_measurements_button, exit_rew_session_button, rew_launch_button
 
-        # define names for the imported classes
-        rewA = REWAutomation()
-        dataH = Data_Handling()
-        Lea = Lea_Settings()
-        rewM = Measurements(rewA, dataH, Lea)
 
-        '''
-        will need to change this to the correct ip address
-        for each testing tool that is setup
-        '''
-        # ip address and port for the LEA amplifier at Latham
-        # Lea_address = 'ws://192.168.1.200:1234'
-        # amp_name = Lea.return_amp_name(Lea_address)
-        # Lea.websocket_connect(Lea_address, Lea.unmute())
-        # Lea.websocket_connect(Lea_address, Lea.mute())
-        # Lea.websocket_connect(Lea_address, Lea.unmute())
+@app.cell
+def _():
+    rew_runtime_state, set_rew_runtime_state = mo.state(
+        {
+            "rewA": None,
+            "rewM": None,
+            "status": "not_launched",
+            "error": "",
+        }
+    )
+    return rew_runtime_state, set_rew_runtime_state
 
-        if not rewA.is_server_setup():
-            raise RuntimeError(
-                "REW API not detected. If REW is already open, ensure it is an "
-                "API-enabled instance on the configured port."
+
+@app.cell
+def _(rew_launch_button, rew_runtime_state, set_rew_runtime_state):
+    dataH = Data_Handling()
+    Lea = Lea_Settings()
+    _rew_runtime = rew_runtime_state()
+    rewA = _rew_runtime.get("rewA")
+    rewM = _rew_runtime.get("rewM")
+    rew_launch_status = _rew_runtime.get("status", "not_launched")
+    rew_launch_error = _rew_runtime.get("error", "")
+
+    if rew_launch_button.value:
+        try:
+            if rewA is None:
+                rewA = REWAutomation()
+            if not rewA.is_server_setup():
+                rew_launch_status = "failed"
+                rew_launch_error = (
+                    "REW API not detected. If REW is already open, ensure it is "
+                    "an API-enabled instance on the configured port."
+                )
+                rewA = None
+                rewM = None
+            else:
+                rewA.post_no_overall_average()
+                ensure_data_dirs()
+                rewM = Measurements(rewA, dataH, Lea)
+                rew_launch_status = "ready"
+                rew_launch_error = ""
+        except Exception as _rew_launch_exc:
+            rew_launch_status = "failed"
+            rew_launch_error = str(_rew_launch_exc)
+            rewA = None
+            rewM = None
+
+        set_rew_runtime_state(
+            {
+                "rewA": rewA,
+                "rewM": rewM,
+                "status": rew_launch_status,
+                "error": rew_launch_error,
+            }
+        )
+
+    return dataH, rewA, rewM, rew_launch_error, rew_launch_status
+
+
+@app.cell
+def _(rew_launch_error, rew_launch_status):
+    if rew_launch_status == "ready":
+        rew_launch_status_widget = mo.md(
+            "<span style='color: green; font-weight: 700;'>REW is ready.</span>"
+        )
+    elif rew_launch_status == "failed":
+        rew_launch_status_widget = mo.md(
+            "<span style='color: red; font-weight: 700;'>REW launch failed.</span>"
+            f"  \n{rew_launch_error}"
+        )
+    else:
+        rew_launch_status_widget = mo.md(
+            "Press **Launch / Attach REW** before using REW actions."
+        )
+    rew_launch_status_widget
+    return (rew_launch_status_widget,)
+
+
+@app.cell
+def _():
+    clear_rew_result_state, set_clear_rew_result_state = mo.state(
+        {
+            "status": "idle",
+            "note": "Clear-all action has not been run yet.",
+        }
+    )
+    return clear_rew_result_state, set_clear_rew_result_state
+
+
+@app.cell
+def _(clear_rew_measurements_button, rewA, set_clear_rew_result_state):
+    if clear_rew_measurements_button.value:
+        if rewA is None:
+            set_clear_rew_result_state(
+                {
+                    "status": "failed",
+                    "note": "Launch REW first.",
+                }
             )
+        else:
+            try:
+                set_clear_rew_result_state(rewA.post_measurements_command_clearall())
+            except Exception as _clear_exc:
+                set_clear_rew_result_state(
+                    {
+                        "status": "failed",
+                        "note": str(_clear_exc),
+                    }
+                )
+    return
 
-        ifDone = False
-        stillRunning = True
-        calcsWanted = False
-        measurements = ""
-        measurements_taken = 0
 
-        # manually set the last microphone input
-        # this can be changed to allow for more microphones to be added
-        last_input = "2: Dante rx 2"
+@app.cell
+def _(clear_rew_result_state):
+    _clear_rew_result = clear_rew_result_state()
+    _clear_status = _clear_rew_result.get("status")
+    if _clear_status == "idle":
+        clear_rew_status_widget = mo.md(_clear_rew_result.get("note", ""))
+    elif _clear_status == "failed":
+        clear_rew_status_widget = mo.md(
+            "<span style='color: red; font-weight: 700;'>Clear all failed.</span>"
+            f"  \n{_clear_rew_result.get('note', 'Unknown error')}"
+        )
+    else:
+        clear_rew_status_widget = mo.md(
+            "<span style='color: green; font-weight: 700;'>Clear all command sent.</span>"
+            f"  \nCommand used: `{_clear_rew_result.get('command_used')}`"
+            f"  \nResponse: `{_clear_rew_result.get('response')}`"
+            f"  \n{_clear_rew_result.get('error', '')}"
+        )
+    clear_rew_status_widget
+    return (clear_rew_status_widget,)
 
-        # the last input should always be the acoustic microphone
-        num_of_mics = int(last_input[0])
 
-        # getting the audio drivers established and setting the last input
-        print("Setting audio drivers, please wait")
-        # rewA.post_audio_driver()
-        # rewA.post_audio_device()
-        # for i in range(num_of_mics-1):
-            # rewA.post_audio_asio_input(f"{i+1}: Dante rx {i+1}")
-            # rewA.post_audio_asio_output(f"{i+1}: Dante tx {i+1}")
-        rewA.post_no_overall_average()
-        print("Audio drivers set")
-        ensure_data_dirs()
-    return dataH, rewA, rewM
+@app.cell
+def _():
+    rew_shutdown_result_state, set_rew_shutdown_result_state = mo.state(
+        {
+            "status": "idle",
+            "note": "Shutdown action has not been run yet.",
+        }
+    )
+    return rew_shutdown_result_state, set_rew_shutdown_result_state
+
+
+@app.cell
+def _(
+    exit_rew_session_button,
+    rew_runtime_state,
+    set_rew_runtime_state,
+    set_rew_shutdown_result_state,
+):
+    if exit_rew_session_button.value:
+        _runtime = rew_runtime_state()
+        _rewA_for_shutdown = _runtime.get("rewA")
+        if _rewA_for_shutdown is None:
+            set_rew_shutdown_result_state(
+                {
+                    "status": "failed",
+                    "note": "REW is not running from this interface.",
+                }
+            )
+        else:
+            try:
+                _shutdown_response = _rewA_for_shutdown.post_command_shutdown()
+                set_rew_shutdown_result_state(
+                    {
+                        "status": "ok",
+                        "note": "REW shutdown command sent.",
+                        "response": _shutdown_response,
+                    }
+                )
+                set_rew_runtime_state(
+                    {
+                        "rewA": None,
+                        "rewM": None,
+                        "status": "not_launched",
+                        "error": "",
+                    }
+                )
+            except Exception as _shutdown_exc:
+                set_rew_shutdown_result_state(
+                    {
+                        "status": "failed",
+                        "note": str(_shutdown_exc),
+                    }
+                )
+    return
+
+
+@app.cell
+def _(rew_shutdown_result_state):
+    _rew_shutdown_result = rew_shutdown_result_state()
+    _rew_shutdown_status = _rew_shutdown_result.get("status")
+    if _rew_shutdown_status == "idle":
+        rew_shutdown_status_widget = mo.md(_rew_shutdown_result.get("note", ""))
+    elif _rew_shutdown_status == "failed":
+        rew_shutdown_status_widget = mo.md(
+            "<span style='color: red; font-weight: 700;'>Shutdown failed.</span>"
+            f"  \n{_rew_shutdown_result.get('note', 'Unknown error')}"
+        )
+    else:
+        rew_shutdown_status_widget = mo.md(
+            "<span style='color: green; font-weight: 700;'>Shutdown command sent.</span>"
+            f"  \nResponse: `{_rew_shutdown_result.get('response')}`"
+        )
+    rew_shutdown_status_widget
+    return (rew_shutdown_status_widget,)
+
+
+@app.cell
+def _(clear_rew_status_widget, rew_launch_status_widget, rew_shutdown_status_widget):
+    rew_session_panel = mo.vstack(
+        [
+            mo.md("### Session Status"),
+            rew_launch_status_widget,
+            clear_rew_status_widget,
+            rew_shutdown_status_widget,
+        ]
+    )
+    rew_session_panel
+    return
 
 
 @app.cell
 def _():
     mo.md(r"""
-    ## I/O Calibration
+    ## 2) I/O Calibration
     ---
-    Run REW generator calibration before loading an `.mdat` file.
+    Optional but recommended before loading `.mdat`.
+    Runs generator tone + LEA readback and shows debug output.
     """)
     return
 
@@ -164,6 +350,7 @@ def _(
     set_io_calibration_result_state,
 ):
     mo.stop(not io_calibration_button.value, mo.md("Click **Run I/O Calibration** to start."))
+    mo.stop(rewM is None, mo.md("Launch / Attach REW before calibration."))
 
     ws_value = io_calibration_ws.value.strip()
     if not ws_value:
@@ -241,9 +428,9 @@ def _(io_calibration_result_state):
 @app.cell
 def _():
     mo.md(r"""
-    ## Load .mdat files
+    ## 3) Load .mdat
     ---
-    Choose a REW measurement file to load.
+    Select one `.mdat` file, then click load.
     """)
     return
 
@@ -285,7 +472,7 @@ def _(path_str):
 
 @app.cell
 def _():
-    load_button = mo.ui.run_button(label="Load mdat file")
+    load_button = mo.ui.run_button(label="Load Selected .mdat")
     load_button
     return (load_button,)
 
@@ -293,7 +480,12 @@ def _():
 @app.cell
 def _(load_button, path_str, rewA):
     if load_button.value:
-        rewA.load_mdat(path_str)
+        if not path_str:
+            print("Select an .mdat file first.")
+        elif rewA is None:
+            print("Launch / Attach REW first.")
+        else:
+            rewA.load_mdat(path_str)
     else:
         print("No file loaded")
     return
@@ -302,9 +494,9 @@ def _(load_button, path_str, rewA):
 @app.cell
 def _():
     mo.md(r"""
-    ## Unit Info
+    ## 4) Unit Info
     ---
-    Provide the unit type and number used to name measurements.
+    Provide naming fields used when taking measurements.
     """)
     return
 
@@ -326,41 +518,24 @@ def _():
 @app.cell
 def _(unitNumber, unitType):
     _unit_name = f"{unitType.value} {unitNumber.value}".strip()
-    mo.md(rf"**Current measurement name:** `{_unit_name or '—'}`")
+    mo.md(rf"**Current measurement name:** `{_unit_name or '-'}`")
     return (_unit_name,)
 
 
 @app.cell
 def _():
     mo.md(r"""
-    ## Amplifier (Optional)
+    ## 5) Measurement Controls
     ---
-    Enter the amplifier IP if needed for your setup.
+    Choose sweep type and run measurement.
     """)
     return
 
 
 @app.cell
 def _():
-    amp_ip_address = mo.ui.text(label="Enter LEA Amplifier IP Address:")
-    amp_ip_address
-    return
-
-
-@app.cell
-def _():
-    mo.md(r"""
-    ## Run Measurement
-    ---
-    Choose a sweep type to run the measurement using the name above.
-    """)
-    return
-
-
-@app.cell
-def _():
-    sine_sweep_button = mo.ui.run_button(label="Sine Sweep")
-    stepped_sine_sweep_button = mo.ui.run_button(label="Stepped Sine Sweep")
+    sine_sweep_button = mo.ui.run_button(label="Run Sine Sweep")
+    stepped_sine_sweep_button = mo.ui.run_button(label="Run Stepped Sine Sweep")
     sine_sweep_button, stepped_sine_sweep_button
     return sine_sweep_button, stepped_sine_sweep_button
 
@@ -373,7 +548,10 @@ def _(
     unitNumber,
     unitType,
 ):
-    if sine_sweep_button.value:
+    if rewM is None and (sine_sweep_button.value or stepped_sine_sweep_button.value):
+        with mo.redirect_stdout():
+            print("Launch / Attach REW first.")
+    elif sine_sweep_button.value:
         rewM.sine_sweep(rewM.unitInput(unitType.value, unitNumber.value))
     elif stepped_sine_sweep_button.value:
         rewM.stepped_sine_sweep(rewM.unitInput(unitType.value, unitNumber.value))
@@ -386,23 +564,23 @@ def _(
 @app.cell
 def _():
     mo.md(r"""
-    ## Save in REW
+    ## 6) Save Loaded Measurements
     ---
-    Save the measurements inside REW using the filename below.
+    Save all currently loaded measurements in REW as one `.mdat`.
     """)
     return
 
 
 @app.cell
 def _():
-    save_file_name = mo.ui.text(label="What do you want to name the file?:")
+    save_file_name = mo.ui.text(label="Save .mdat filename")
     save_file_name
     return (save_file_name,)
 
 
 @app.cell
 def _():
-    save_button = mo.ui.run_button(label="Save Measurements")
+    save_button = mo.ui.run_button(label="Save All to .mdat")
     save_button
     return (save_button,)
 
@@ -410,8 +588,11 @@ def _():
 @app.cell
 def _(dataH, rewA, save_button, save_file_name):
     if save_button.value:
-        safe_save_name = dataH.sanitize_filename(save_file_name.value)
-        rewA.post_measurements_command_saveall(safe_save_name)
+        if rewA is None:
+            print("Launch / Attach REW first.")
+        else:
+            safe_save_name = dataH.sanitize_filename(save_file_name.value)
+            rewA.post_measurements_command_saveall(safe_save_name)
     else:
         print("No file saved")
     return
@@ -420,7 +601,7 @@ def _(dataH, rewA, save_button, save_file_name):
 @app.cell
 def _():
     mo.md(r"""
-    ## Export JSON
+    ## 7) Export JSON
     ---
     Select a measurement and export it as JSON.
     Filenames use `YYYYMMDD_HHMMSS__ID<id>__<title>.json`.
@@ -465,7 +646,10 @@ def _():
 
 @app.cell
 def _(rewA):
-    smoothing_choices_raw = rewA.get_measurements_frequency_response_smoothing_choices()
+    if rewA is None:
+        smoothing_choices_raw = []
+    else:
+        smoothing_choices_raw = rewA.get_measurements_frequency_response_smoothing_choices()
     # smoothing_choices_raw
     return (smoothing_choices_raw,)
 
@@ -499,9 +683,12 @@ def _(smoothing_choices_raw):
 @app.cell
 def _(load_button, rewA):
     if load_button.value:
-        time.sleep(3)
-        with mo.status.spinner(title="Fetching data..."):
-            measurements_all = rewA.get_measurements()
+        if rewA is None:
+            measurements_all = {}
+        else:
+            time.sleep(3)
+            with mo.status.spinner(title="Fetching data..."):
+                measurements_all = rewA.get_measurements()
     else:
         measurements_all = {}
     return (measurements_all,)
@@ -525,7 +712,7 @@ def _(measNum, measurements_all):
 def _(export_json_name_value, measNum, measurement, rewA, smoothing_select):
     response = {}
     selected_smoothing = None
-    if measNum and measurement:
+    if rewA is not None and measNum and measurement:
         selected_smoothing = smoothing_select.value
         if selected_smoothing == "Default":
             selected_smoothing = None
@@ -558,8 +745,9 @@ def _(dataH, decoded_array, response):
 
 
 @app.cell
-def _():
-    json_outpath = str(get_json_dir())
+def _(dataH, parent_mdat):
+    _mdat_folder_name = dataH.sanitize_filename(parent_mdat or "unknown_mdat")
+    json_outpath = str(get_json_dir() / _mdat_folder_name)
     json_outpath
     return (json_outpath,)
 
@@ -574,7 +762,7 @@ def _(measurement):
 def _(export_json_name_value):
     mo.stop(not export_json_name_value, mo.md("Select a measurement to continue."))
 
-    make_json_button = mo.ui.run_button(label='make the json')
+    make_json_button = mo.ui.run_button(label="Export Selected Measurement as JSON")
     make_json_button
     return (make_json_button,)
 
@@ -619,7 +807,7 @@ def _(
 def _():
     mo.md(r"""
     ### Export All Measurements
-    Export all measurements into `data/json` using the same naming scheme.
+    Export all measurements into `data/json/<parent_mdat>/` using the same naming scheme.
     """)
     return
 
@@ -634,8 +822,10 @@ def _():
 @app.cell
 def _(dataH, export_all_button, measurements_all, rewA, parent_mdat):
     mo.stop(not export_all_button.value, mo.md("Click to export all measurements."))
+    mo.stop(rewA is None, mo.md("Launch / Attach REW first."))
 
-    export_all_dir = get_json_dir()
+    _mdat_folder_name = dataH.sanitize_filename(parent_mdat or "unknown_mdat")
+    export_all_dir = get_json_dir() / _mdat_folder_name
 
     for _meas_id, _meas in measurements_all.items():
         response_all = rewA.get_measurements_id_freq_response(str(_meas_id))
@@ -660,33 +850,6 @@ def _(dataH, export_all_button, measurements_all, rewA, parent_mdat):
         )
 
     mo.md(rf"Exported to: `{str(export_all_dir)}`")
-    return
-
-
-@app.cell
-def _():
-    mo.md(r"""
-    ## Exit
-    ---
-    Shut down REW when finished.
-    """)
-    return
-
-
-@app.cell
-def _():
-    exit_REW_button = mo.ui.run_button(label="exit REW?")
-    exit_REW_button
-    return (exit_REW_button,)
-
-
-@app.cell
-def _(exit_REW_button, rewA):
-    if exit_REW_button.value:
-        rewA.post_command_shutdown()
-        print("REW is shut down")
-    else:
-        print("REW is not shut down")
     return
 
 

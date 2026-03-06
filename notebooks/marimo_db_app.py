@@ -76,12 +76,15 @@ def _():
     connect_last_value, set_connect_last_value = mo.state(0)
     records_state, set_records_state = mo.state([])
     last_refresh_state, set_last_refresh_state = mo.state(None)
-    connect_last_value, records_state, last_refresh_state
+    db_connect_error_state, set_db_connect_error_state = mo.state("")
+    connect_last_value, records_state, last_refresh_state, db_connect_error_state
     return (
         connect_last_value,
+        db_connect_error_state,
         last_refresh_state,
         records_state,
         set_connect_last_value,
+        set_db_connect_error_state,
         set_last_refresh_state,
         set_records_state,
     )
@@ -97,6 +100,7 @@ def _(
     db_port,
     db_user,
     set_connect_last_value,
+    set_db_connect_error_state,
     set_last_refresh_state,
     set_records_state,
     title_filter,
@@ -106,15 +110,20 @@ def _(
     mo.stop(not connect_button.value, mo.md("Click **Connect** to load data."))
     mo.stop(connect_button.value <= connect_last_value(), mo.md("Click **Connect** to reconnect."))
 
-    _conn = psycopg.connect(
-        host=db_host.value.strip(),
-        port=int(db_port.value.strip()),
-        dbname=db_name.value.strip(),
-        user=db_user.value.strip(),
-        password=db_pass.value,
-    )
-    _conn.autocommit = True
+    _records = []
+    _connect_error = ""
+    _conn = None
     try:
+        _conn = psycopg.connect(
+            host=db_host.value.strip(),
+            port=int(db_port.value.strip()),
+            dbname=db_name.value.strip(),
+            user=db_user.value.strip(),
+            password=db_pass.value,
+            connect_timeout=5,
+            options="-c statement_timeout=12000 -c lock_timeout=3000",
+        )
+        _conn.autocommit = True
         with _conn.cursor() as _cur:
             _cur.execute(
                 """
@@ -146,6 +155,7 @@ def _(
                 m.rew_version,
                 m.measured_at,
                 COALESCE(to_jsonb(m) ->> 'parent_mdat', '') AS parent_mdat,
+                COALESCE(NULLIF(regexp_replace(COALESCE(f.relative_path, ''), '/[^/]+$', ''), ''), '(root)') AS json_folder,
                 COALESCE(f.kind, '') AS kind,
                 COALESCE(f.relative_path, '') AS relative_path,
                 COALESCE(h.base_url, '') AS base_url
@@ -156,7 +166,9 @@ def _(
                 (COALESCE(m.title, '') ILIKE %(title)s OR %(title)s = '%%')
                 AND (COALESCE(m.unit_type, '') ILIKE %(unit_type)s OR %(unit_type)s = '%%')
                 AND (COALESCE(m.unit_number, '') ILIKE %(unit_number)s OR %(unit_number)s = '%%')
-            ORDER BY f.created_at DESC
+            ORDER BY
+                COALESCE(NULLIF(regexp_replace(COALESCE(f.relative_path, ''), '/[^/]+$', ''), ''), '(root)'),
+                f.created_at DESC
             LIMIT 500
         """
 
@@ -171,17 +183,20 @@ def _(
             _rows = _cur.fetchall()
             _columns = [desc.name for desc in _cur.description]
 
-        _records = []
         for _row in _rows:
             _record = dict(zip(_columns, _row))
             for _key, _value in _record.items():
                 if _value is None:
                     _record[_key] = ""
             _records.append(_record)
+    except Exception as _db_exc:
+        _connect_error = str(_db_exc)
     finally:
-        _conn.close()
+        if _conn is not None:
+            _conn.close()
 
     set_records_state(_records)
+    set_db_connect_error_state(_connect_error)
     set_connect_last_value(connect_button.value)
     set_last_refresh_state(datetime.now())
     return
@@ -263,6 +278,7 @@ def _(
                 m.rew_version,
                 m.measured_at,
                 COALESCE(to_jsonb(m) ->> 'parent_mdat', '') AS parent_mdat,
+                COALESCE(NULLIF(regexp_replace(COALESCE(f.relative_path, ''), '/[^/]+$', ''), ''), '(root)') AS json_folder,
                 COALESCE(f.kind, '') AS kind,
                 COALESCE(f.relative_path, '') AS relative_path,
                 COALESCE(h.base_url, '') AS base_url
@@ -273,7 +289,9 @@ def _(
                 (COALESCE(m.title, '') ILIKE %(title)s OR %(title)s = '%%')
                 AND (COALESCE(m.unit_type, '') ILIKE %(unit_type)s OR %(unit_type)s = '%%')
                 AND (COALESCE(m.unit_number, '') ILIKE %(unit_number)s OR %(unit_number)s = '%%')
-            ORDER BY f.created_at DESC
+            ORDER BY
+                COALESCE(NULLIF(regexp_replace(COALESCE(f.relative_path, ''), '/[^/]+$', ''), ''), '(root)'),
+                f.created_at DESC
             LIMIT 500
         """
 
@@ -313,7 +331,9 @@ def _():
 
 
 @app.cell
-def _(last_refresh_state):
+def _(db_connect_error_state, last_refresh_state):
+    if db_connect_error_state():
+        mo.md(f"Database connection failed: `{db_connect_error_state()}`")
     if last_refresh_state() is None:
         mo.md("**Last refreshed:** —")
     else:
@@ -378,6 +398,7 @@ def _(
                 m.rew_version,
                 m.measured_at,
                 COALESCE(to_jsonb(m) ->> 'parent_mdat', '') AS parent_mdat,
+                COALESCE(NULLIF(regexp_replace(COALESCE(f.relative_path, ''), '/[^/]+$', ''), ''), '(root)') AS json_folder,
                 COALESCE(f.kind, '') AS kind,
                 COALESCE(f.relative_path, '') AS relative_path,
                 COALESCE(h.base_url, '') AS base_url
@@ -388,7 +409,9 @@ def _(
                 (COALESCE(m.title, '') ILIKE %(title)s OR %(title)s = '%%')
                 AND (COALESCE(m.unit_type, '') ILIKE %(unit_type)s OR %(unit_type)s = '%%')
                 AND (COALESCE(m.unit_number, '') ILIKE %(unit_number)s OR %(unit_number)s = '%%')
-            ORDER BY f.created_at DESC
+            ORDER BY
+                COALESCE(NULLIF(regexp_replace(COALESCE(f.relative_path, ''), '/[^/]+$', ''), ''), '(root)'),
+                f.created_at DESC
             LIMIT 500
         """
 
@@ -426,6 +449,82 @@ def _(records_state):
 @app.cell
 def _():
     mo.md(r"""
+    ## Folder Grouped View
+    Group and filter records by JSON folder (`data/json/<folder>/...`).
+    """)
+    return
+
+
+@app.cell
+def _(records_state):
+    _records = records_state()
+    _folders = sorted(
+        {
+            str(r.get("json_folder") or "(root)")
+            for r in _records
+            if str(r.get("kind") or "").lower() == "json"
+        }
+    )
+    _folder_options = ["(all folders)"] + _folders
+    folder_group_select = mo.ui.dropdown(
+        options=_folder_options,
+        value=_folder_options[0] if _folder_options else None,
+        label="Folder filter",
+    )
+    folder_group_select
+    return (folder_group_select,)
+
+
+@app.cell
+def _(records_state):
+    _group_counts = {}
+    for _record in records_state():
+        if str(_record.get("kind") or "").lower() != "json":
+            continue
+        _folder_key = str(_record.get("json_folder") or "(root)")
+        _group_counts[_folder_key] = _group_counts.get(_folder_key, 0) + 1
+
+    folder_group_rows = [
+        {"json_folder": _folder_key, "json_count": _count}
+        for _folder_key, _count in sorted(_group_counts.items(), key=lambda x: x[0])
+    ]
+    return (folder_group_rows,)
+
+
+@app.cell
+def _(folder_group_rows):
+    mo.ui.table(folder_group_rows, label="Folder Summary")
+    return
+
+
+@app.cell
+def _(folder_group_select, records_state):
+    _selected_folder = folder_group_select.value
+    if _selected_folder == "(all folders)":
+        folder_filtered_records = [
+            _record
+            for _record in records_state()
+            if str(_record.get("kind") or "").lower() == "json"
+        ]
+    else:
+        folder_filtered_records = [
+            _record
+            for _record in records_state()
+            if str(_record.get("kind") or "").lower() == "json"
+            and str(_record.get("json_folder") or "(root)") == _selected_folder
+        ]
+    return (folder_filtered_records,)
+
+
+@app.cell
+def _(folder_filtered_records):
+    mo.ui.table(folder_filtered_records, label="Folder-Filtered JSON Records")
+    return
+
+
+@app.cell
+def _():
+    mo.md(r"""
     ## Plot JSON
     Select a JSON file to plot SPL vs Frequency.
     """)
@@ -433,8 +532,12 @@ def _():
 
 
 @app.cell
-def _(records_state):
-    json_paths = [r.get("relative_path") for r in records_state() if r.get("kind") == "json"]
+def _(folder_filtered_records):
+    json_paths = [
+        r.get("relative_path")
+        for r in folder_filtered_records
+        if str(r.get("kind") or "").lower() == "json"
+    ]
     plot_select = mo.ui.dropdown(
         options=json_paths,
         value=json_paths[0] if json_paths else None,
@@ -589,6 +692,7 @@ def _(
                 m.rew_version,
                 m.measured_at,
                 COALESCE(to_jsonb(m) ->> 'parent_mdat', '') AS parent_mdat,
+                COALESCE(NULLIF(regexp_replace(COALESCE(f.relative_path, ''), '/[^/]+$', ''), ''), '(root)') AS json_folder,
                 COALESCE(f.kind, '') AS kind,
                 COALESCE(f.relative_path, '') AS relative_path,
                 COALESCE(h.base_url, '') AS base_url
@@ -599,7 +703,9 @@ def _(
                 (COALESCE(m.title, '') ILIKE %(title)s OR %(title)s = '%%')
                 AND (COALESCE(m.unit_type, '') ILIKE %(unit_type)s OR %(unit_type)s = '%%')
                 AND (COALESCE(m.unit_number, '') ILIKE %(unit_number)s OR %(unit_number)s = '%%')
-            ORDER BY f.created_at DESC
+            ORDER BY
+                COALESCE(NULLIF(regexp_replace(COALESCE(f.relative_path, ''), '/[^/]+$', ''), ''), '(root)'),
+                f.created_at DESC
             LIMIT 500
         """
 
