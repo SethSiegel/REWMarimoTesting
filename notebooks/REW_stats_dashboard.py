@@ -6,6 +6,7 @@
 #     "matplotlib==3.10.8",
 #     "pyzmq>=27.1.0",
 #     "numpy>=2.0.0",
+#     "plotly>=5.22.0",
 # ]
 # [tool.marimo.opengraph]
 # title = "REW Statistical Analysis Dashboard"
@@ -31,6 +32,8 @@ with app.setup:
     import psycopg
     import numpy as np
     import matplotlib.pyplot as plt
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
     import marimo as mo
     from project_paths import get_data_root
 
@@ -254,8 +257,8 @@ def _(ana_records_state):
 
 @app.cell
 def _():
-    ana_mdat_filter = mo.ui.text(label="Filter by MDAT name", value="")
-    ana_folder_filter = mo.ui.text(label="Filter by folder/path", value="")
+    ana_mdat_filter = mo.ui.text(label="MDAT filter", value="")
+    ana_folder_filter = mo.ui.text(label="Folder filter", value="")
     ana_suffix_filter = mo.ui.dropdown(
         options=["All", "Ends with -1", "Ends with -2", "Ends with -1 or -2"],
         value="All",
@@ -266,10 +269,12 @@ def _():
 
 @app.cell
 def _(ana_folder_dropdown, ana_folder_filter, ana_mdat_filter, ana_suffix_filter):
-    mo.hstack(
-        [ana_mdat_filter, ana_folder_dropdown, ana_folder_filter, ana_suffix_filter],
-        justify="start",
-        gap=1,
+    mo.vstack(
+        [
+            mo.hstack([ana_mdat_filter, ana_suffix_filter], justify="start", gap=1),
+            mo.hstack([ana_folder_dropdown, ana_folder_filter], justify="start", gap=1),
+        ],
+        gap=0.6,
     )
     return
 
@@ -338,28 +343,6 @@ def _(ana_folder_dropdown, ana_folder_filter, ana_mdat_filter, ana_records_state
 
 
 @app.cell
-def _(ana_filtered_records, ana_records_state):
-    _table_rows = []
-    for _record in ana_filtered_records:
-        _table_rows.append(
-            {
-                "mdat_name": _record.get("_parent_mdat", ""),
-                "measurement_title": _record.get("_title", ""),
-                "folder": _record.get("_folder", ""),
-                "unit_type": _record.get("unit_type", ""),
-                "unit_number": _record.get("unit_number", ""),
-                "file_id": _record.get("file_id", ""),
-                "measurement_id": _record.get("measurement_id", ""),
-                "relative_path": _record.get("relative_path", ""),
-            }
-        )
-    _tbl_label = f"JSON Records ({len(_table_rows)} shown of {len(ana_records_state())})"
-    _tbl = mo.ui.table(_table_rows, label=_tbl_label)
-    _tbl
-    return
-
-
-@app.cell
 def _(ana_filtered_records):
     ana_record_items = []
     for _r in ana_filtered_records:
@@ -371,10 +354,7 @@ def _(ana_filtered_records):
         _unit_number = _r.get("unit_number") or "?"
         _parent = _r.get("_parent_mdat") or "-"
         _folder = _r.get("_folder") or "-"
-        _label = (
-            f"MDAT:{_parent} | MEAS:{_title} | FOLDER:{_folder} | "
-            f"UNIT:{_unit_type}-{_unit_number} | FILE:{_file_id}"
-        )
+        _label = f"{_title} | MDAT:{_parent} | FILE:{_file_id}"
         ana_record_items.append((_label, _r))
 
     ana_record_items.sort(key=lambda x: x[0])
@@ -462,9 +442,23 @@ def _():
     ana_min_hz = mo.ui.number(start=10.0, stop=1000.0, step=1.0, value=20.0, label="Min Freq (Hz)")
     ana_max_hz = mo.ui.number(start=200.0, stop=40000.0, step=10.0, value=20000.0, label="Max Freq (Hz)")
     ana_ppo = mo.ui.number(start=3, stop=96, step=1, value=24, label="Points/Octave")
+    ana_band_select = mo.ui.dropdown(
+        options=[
+            "Full Range",
+            "Sub-bass (20-60 Hz)",
+            "Bass (60-250 Hz)",
+            "Low-mid (250-500 Hz)",
+            "Mid (500-2000 Hz)",
+            "Upper-mid (2000-4000 Hz)",
+            "Presence (4000-6000 Hz)",
+            "Brilliance (6000-20000 Hz)",
+        ],
+        value="Full Range",
+        label="Frequency Band",
+    )
     ana_run_button = mo.ui.run_button(label="Run Statistical Analysis")
-    ana_tol_db, ana_min_hz, ana_max_hz, ana_ppo, ana_run_button
-    return ana_max_hz, ana_min_hz, ana_ppo, ana_run_button, ana_tol_db
+    ana_tol_db, ana_min_hz, ana_max_hz, ana_ppo, ana_band_select, ana_run_button
+    return ana_band_select, ana_max_hz, ana_min_hz, ana_ppo, ana_run_button, ana_tol_db
 
 
 @app.cell
@@ -477,6 +471,7 @@ def _():
 def _(
     bench_path_map,
     ana_benchmark_select,
+    ana_band_select,
     ana_max_hz,
     ana_min_hz,
     ana_ppo,
@@ -485,8 +480,11 @@ def _(
     ana_set_result_state,
     ana_tol_db,
 ):
-    mo.stop(not ana_run_button.value, mo.md("Click **Run Statistical Analysis** to compute curves."))
-    mo.stop(not ana_selected_records, mo.md("Select at least one JSON record."))
+    if not ana_selected_records:
+        ana_set_result_state(None)
+        mo.stop(True, mo.md("Select at least one JSON record."))
+
+    _ = ana_run_button.value
 
     _data_root = get_data_root()
     _local_root = repo_root / "data"
@@ -560,15 +558,43 @@ def _(
             }
         )
 
-    mo.stop(not _curve_data, mo.md("No valid curves loaded. Check selected records and file paths."))
+    if not _curve_data:
+        ana_set_result_state(None)
+        mo.stop(
+            True,
+            mo.md("No valid curves loaded. Check selected records and file paths."),
+        )
 
     _user_min = float(ana_min_hz.value)
     _user_max = float(ana_max_hz.value)
     _min_overlap = max(float(np.min(c["freq"])) for c in _curve_data)
     _max_overlap = min(float(np.max(c["freq"])) for c in _curve_data)
+    _band_label = (ana_band_select.value or "Full Range").strip()
+    _band_min = None
+    _band_max = None
+    _band_map = {
+        "Sub-bass (20-60 Hz)": (20.0, 60.0),
+        "Bass (60-250 Hz)": (60.0, 250.0),
+        "Low-mid (250-500 Hz)": (250.0, 500.0),
+        "Mid (500-2000 Hz)": (500.0, 2000.0),
+        "Upper-mid (2000-4000 Hz)": (2000.0, 4000.0),
+        "Presence (4000-6000 Hz)": (4000.0, 6000.0),
+        "Brilliance (6000-20000 Hz)": (6000.0, 20000.0),
+    }
+    if _band_label in _band_map:
+        _band_min, _band_max = _band_map[_band_label]
+
     _analysis_min = max(_user_min, _min_overlap)
     _analysis_max = min(_user_max, _max_overlap)
-    mo.stop(_analysis_max <= _analysis_min, mo.md("No overlapping frequency range across selected curves."))
+    if _band_min is not None and _band_max is not None:
+        _analysis_min = max(_analysis_min, _band_min)
+        _analysis_max = min(_analysis_max, _band_max)
+    if _analysis_max <= _analysis_min:
+        ana_set_result_state(None)
+        mo.stop(
+            True,
+            mo.md("No overlapping frequency range across selected curves."),
+        )
 
     _benchmark_label = None
     _benchmark_curve = None
@@ -758,64 +784,257 @@ def _(
             }
         )
 
-    _fig, _ax = plt.subplots(figsize=(11, 6))
+    _fig = go.Figure()
     for _curve_idx in range(_matrix.shape[0]):
-        _ax.semilogx(_grid_hz, _matrix[_curve_idx], color="#909090", alpha=0.30, linewidth=1.0)
-    _ax.fill_between(_grid_hz, _p10_curve, _p90_curve, color="#9ecae1", alpha=0.35, label="P10-P90 band")
-    _ax.semilogx(_grid_hz, _mean_curve, color="#045a8d", linewidth=2.4, label="Mean")
-    _ax.semilogx(_grid_hz, _median_curve, color="#238b45", linewidth=2.0, linestyle="--", label="Median")
-    _ax.semilogx(_grid_hz, _mean_curve + _tol, color="#cb181d", linestyle=":", linewidth=1.8, label=f"+/-{_tol:.2f} dB tolerance")
-    _ax.semilogx(_grid_hz, _mean_curve - _tol, color="#cb181d", linestyle=":", linewidth=1.8)
-    if _benchmark_curve is not None:
-        _ax.semilogx(
-            _benchmark_curve["freq"],
-            _benchmark_curve["spl"],
-            color="#d4a017",
-            linewidth=2.2,
-            label=f"Benchmark: {_benchmark_curve['label']}",
+        _fig.add_trace(
+            go.Scatter(
+                x=_grid_hz,
+                y=_matrix[_curve_idx],
+                mode="lines",
+                line=dict(color="#909090", width=1),
+                opacity=0.30,
+                name=_titles[_curve_idx],
+                showlegend=False,
+                hovertemplate=(
+                    "Freq: %{x:.2f} Hz<br>"
+                    "SPL: %{y:.2f} dB<br>"
+                    f"Curve: {_titles[_curve_idx]}"
+                    "<extra></extra>"
+                ),
+            )
         )
-    _ax.set_xlabel("Frequency (Hz)")
-    _ax.set_ylabel("SPL (dB)")
-    _ax.set_title("Tolerance and Statistical Curves")
-    _ax.grid(True, which="both", linestyle="--", alpha=0.35)
-    _ax.legend(loc="best")
+
+    _fig.add_trace(
+        go.Scatter(
+            x=_grid_hz,
+            y=_p10_curve,
+            mode="lines",
+            line=dict(color="rgba(158,202,225,0.0)", width=1),
+            name="P10-P90 band",
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    _fig.add_trace(
+        go.Scatter(
+            x=_grid_hz,
+            y=_p90_curve,
+            mode="lines",
+            line=dict(color="rgba(158,202,225,0.6)", width=1),
+            fill="tonexty",
+            fillcolor="rgba(158,202,225,0.35)",
+            name="P10-P90 band",
+            hoverinfo="skip",
+        )
+    )
+    _fig.add_trace(
+        go.Scatter(
+            x=_grid_hz,
+            y=_mean_curve,
+            mode="lines",
+            line=dict(color="#2ecc71", width=2.4),
+            name="Mean",
+            hovertemplate="Mean<br>Freq: %{x:.2f} Hz<br>SPL: %{y:.2f} dB<extra></extra>",
+        )
+    )
+    _fig.add_trace(
+        go.Scatter(
+            x=_grid_hz,
+            y=_median_curve,
+            mode="lines",
+            line=dict(color="#f39c12", width=2.0, dash="dash"),
+            name="Median",
+            hovertemplate="Median<br>Freq: %{x:.2f} Hz<br>SPL: %{y:.2f} dB<extra></extra>",
+        )
+    )
+    _fig.add_trace(
+        go.Scatter(
+            x=_grid_hz,
+            y=_mean_curve + _tol,
+            mode="lines",
+            line=dict(color="#cb181d", width=1.8, dash="dot"),
+            name=f"+/-{_tol:.2f} dB tolerance",
+            hovertemplate="Tolerance upper<br>Freq: %{x:.2f} Hz<br>SPL: %{y:.2f} dB<extra></extra>",
+        )
+    )
+    _fig.add_trace(
+        go.Scatter(
+            x=_grid_hz,
+            y=_mean_curve - _tol,
+            mode="lines",
+            line=dict(color="#cb181d", width=1.8, dash="dot"),
+            name=f"+/-{_tol:.2f} dB tolerance",
+            showlegend=False,
+            hovertemplate="Tolerance lower<br>Freq: %{x:.2f} Hz<br>SPL: %{y:.2f} dB<extra></extra>",
+        )
+    )
+    if _benchmark_curve is not None:
+        _fig.add_trace(
+            go.Scatter(
+                x=_benchmark_curve["freq"],
+                y=_benchmark_curve["spl"],
+                mode="lines",
+                line=dict(color="#d4a017", width=2.2),
+                name=f"Benchmark: {_benchmark_curve['label']}",
+                hovertemplate="Benchmark<br>Freq: %{x:.2f} Hz<br>SPL: %{y:.2f} dB<extra></extra>",
+            )
+        )
+
+    _fig.update_layout(
+        title="Tolerance and Statistical Curves",
+        xaxis=dict(title="Frequency (Hz)", type="log"),
+        yaxis=dict(title="SPL (dB)"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        hovermode="closest",
+        margin=dict(l=60, r=20, t=60, b=50),
+        template="plotly_white",
+    )
 
     _max_dev_values = _metric_map["max_abs_deviation_db"]
     _pct_values = _metric_map["pct_within_tolerance"]
+    _titles_for_bins = [m["title"] for m in _per_curve_metrics]
+
+    def _build_hist(values, titles, bins, range_override=None):
+        _pairs = [
+            (float(v), t)
+            for v, t in zip(values, titles)
+            if v is not None and np.isfinite(v)
+        ]
+        if not _pairs:
+            return np.array([]), np.array([]), np.array([]), []
+
+        _vals = np.array([v for v, _ in _pairs], dtype=float)
+        _titles = [t for _, t in _pairs]
+
+        _range = range_override
+        if _range is None:
+            _min = float(np.min(_vals))
+            _max = float(np.max(_vals))
+            if _min == _max:
+                _pad = 0.5 if _min == 0 else max(abs(_min) * 0.01, 0.5)
+                _range = (_min - _pad, _max + _pad)
+                bins = 1
+        _unique_count = len(np.unique(_vals))
+        if _unique_count < bins:
+            bins = max(1, _unique_count)
+
+        try:
+            hist, edges = np.histogram(_vals, bins=bins, range=_range)
+        except ValueError:
+            _min = float(np.min(_vals))
+            _max = float(np.max(_vals))
+            if _min == _max:
+                _pad = 0.5 if _min == 0 else max(abs(_min) * 0.01, 0.5)
+            else:
+                _pad = max(abs(_max - _min) * 0.05, 0.5)
+            _range = (_min - _pad, _max + _pad)
+            hist, edges = np.histogram(_vals, bins=1, range=_range)
+        bin_centers = (edges[:-1] + edges[1:]) / 2.0
+        widths = edges[1:] - edges[:-1]
+        bin_items = [[] for _ in range(len(hist))]
+        for _val, _title in zip(_vals, _titles):
+            _idx = np.searchsorted(edges, _val, side="right") - 1
+            _idx = max(0, min(int(_idx), len(hist) - 1))
+            bin_items[_idx].append(_title)
+
+        def _format_titles(items, max_items=10):
+            if not items:
+                return "None"
+            shown = items[:max_items]
+            extra = len(items) - len(shown)
+            extra_text = f"<br>+{extra} more" if extra > 0 else ""
+            return "<br>".join(shown) + extra_text
+
+        hovertext = []
+        for i in range(len(hist)):
+            hovertext.append(
+                f"Range: {edges[i]:.3f} – {edges[i+1]:.3f}"
+                f"<br>Count: {hist[i]}"
+                f"<br>Measurements:<br>{_format_titles(bin_items[i])}"
+            )
+        return bin_centers, hist, widths, hovertext
+
     _within_count = sum(1 for v in _max_dev_values if v <= _tol)
-    _dist_fig, (_dist_ax1, _dist_ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
-    _dist_ax1.hist(_max_dev_values, bins=24, color="#9ecae1", edgecolor="white", alpha=0.85)
-    _dist_ax1.axvline(
-        _tol,
-        color="#cb181d",
-        linestyle="--",
-        linewidth=1.6,
-        label=f"Tolerance ({_tol:.2f} dB)",
+    _max_centers, _max_hist, _max_widths, _max_hover = _build_hist(
+        _max_dev_values,
+        _titles_for_bins,
+        bins=24,
     )
-    _dist_ax1.set_title(
-        f"Max Abs Deviation Distribution (within tol: {_within_count}/{len(_max_dev_values)})"
+    _pct_centers, _pct_hist, _pct_widths, _pct_hover = _build_hist(
+        _pct_values,
+        _titles_for_bins,
+        bins=20,
+        range_override=(0, 100),
     )
-    _dist_ax1.set_xlabel("Max abs deviation (dB)")
-    _dist_ax1.set_ylabel("Count")
-    _dist_ax1.grid(True, linestyle="--", alpha=0.25)
-    _dist_ax1.legend(loc="best")
+
+    _dist_fig = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=(
+            f"Max Abs Deviation Distribution (within tol: {_within_count}/{len(_max_dev_values)})",
+            "Percent Within Tolerance Distribution",
+        ),
+        horizontal_spacing=0.18,
+    )
+    _dist_fig.add_trace(
+        go.Bar(
+            x=_max_centers,
+            y=_max_hist,
+            width=_max_widths,
+            marker=dict(color="#9ecae1"),
+            hovertext=_max_hover,
+            hoverinfo="text",
+            name="Max abs deviation",
+        ),
+        row=1,
+        col=1,
+    )
+    _dist_fig.add_vline(
+        x=_tol,
+        line_dash="dash",
+        line_color="#cb181d",
+        annotation_text=f"Tolerance ({_tol:.2f} dB)",
+        annotation_position="top right",
+        row=1,
+        col=1,
+    )
 
     _median_pct = float(np.percentile(_pct_values, 50))
-    _dist_ax2.hist(_pct_values, bins=20, color="#c7e9c0", edgecolor="white", alpha=0.85)
-    _dist_ax2.axvline(
-        _median_pct,
-        color="#238b45",
-        linestyle="--",
-        linewidth=1.6,
-        label=f"Median {_median_pct:.2f}%",
+    _dist_fig.add_trace(
+        go.Bar(
+            x=_pct_centers,
+            y=_pct_hist,
+            width=_pct_widths,
+            marker=dict(color="#c7e9c0"),
+            hovertext=_pct_hover,
+            hoverinfo="text",
+            name="Percent within tolerance",
+        ),
+        row=1,
+        col=2,
     )
-    _dist_ax2.set_title("Percent Within Tolerance Distribution")
-    _dist_ax2.set_xlabel("Percent within tolerance (%)")
-    _dist_ax2.set_ylabel("Count")
-    _dist_ax2.set_xlim(0, 100)
-    _dist_ax2.grid(True, linestyle="--", alpha=0.25)
-    _dist_ax2.legend(loc="best")
-    _dist_fig.tight_layout()
+    _dist_fig.add_vline(
+        x=_median_pct,
+        line_dash="dash",
+        line_color="#238b45",
+        annotation_text=f"Median {_median_pct:.2f}%",
+        annotation_position="top right",
+        row=1,
+        col=2,
+    )
+
+    _dist_fig.update_xaxes(title_text="Max abs deviation (dB)", row=1, col=1)
+    _dist_fig.update_yaxes(title_text="Count", row=1, col=1)
+    _dist_fig.update_xaxes(title_text="Percent within tolerance (%)", range=[0, 100], row=1, col=2)
+    _dist_fig.update_yaxes(title_text="Count", row=1, col=2)
+    _dist_fig.update_layout(
+        margin=dict(l=70, r=40, t=70, b=60),
+        template="plotly_white",
+        showlegend=False,
+        height=420,
+    )
+    _dist_fig.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.08)")
+    _dist_fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.08)")
 
     _result_payload = {
         "status": "ok",
@@ -825,6 +1044,9 @@ def _(
         "freq_max_hz": _analysis_max,
         "grid_points": _grid_points,
         "tolerance_db": _tol,
+        "band_label": _band_label,
+        "band_min_hz": _band_min,
+        "band_max_hz": _band_max,
         "summary_rows": _summary_rows,
         "distribution_rows": _distribution_rows,
         "per_curve_metrics": _per_curve_metrics,
@@ -856,6 +1078,8 @@ def _(ana_result_state):
             f"Mean std-dev: `{_result['std_curve_mean_db']:.3f} dB`"
         )
         mo.md(_header)
+        if _result.get("band_label") and _result.get("band_label") != "Full Range":
+            mo.md(f"Band: `{_result['band_label']}`")
         if _result.get("benchmark_label"):
             mo.md(f"Benchmark overlay: `{_result['benchmark_label']}`")
         mo.ui.table(_result["summary_rows"], label="Tolerance Summary")
