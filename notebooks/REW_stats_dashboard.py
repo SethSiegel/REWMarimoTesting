@@ -477,14 +477,21 @@ def _(
     ana_ppo,
     ana_run_button,
     ana_selected_records,
+    ana_load_status_state,
+    ana_loaded_at_state,
     ana_set_result_state,
     ana_tol_db,
 ):
+    mo.stop(not ana_run_button.value, mo.md("Click **Run Statistical Analysis** to start."))
+    if ana_loaded_at_state() is None:
+        ana_set_result_state(None)
+        mo.stop(True, mo.md("No database records loaded. Click **Load JSON Records From Database** first."))
+    if ana_load_status_state() == "error":
+        ana_set_result_state(None)
+        mo.stop(True, mo.md("Database load failed. Reconnect and click **Load JSON Records From Database**."))
     if not ana_selected_records:
         ana_set_result_state(None)
         mo.stop(True, mo.md("Select at least one JSON record."))
-
-    _ = ana_run_button.value
 
     _data_root = get_data_root()
     _local_root = repo_root / "data"
