@@ -195,9 +195,26 @@ def _(clear_rew_result_state):
     if _clear_status == "idle":
         clear_rew_status_widget = mo.md(_clear_rew_result.get("note", ""))
     elif _clear_status == "failed":
+        _note = _clear_rew_result.get("note")
+        _error = _clear_rew_result.get("error")
+        _response = _clear_rew_result.get("response")
+        _available = _clear_rew_result.get("available_commands")
+        _details = []
+        if _note:
+            _details.append(_note)
+        if _error and _error not in _details:
+            _details.append(_error)
+        if _response:
+            _details.append(f"Response: `{_response}`")
+        if _available:
+            _details.append(
+                "Available commands: "
+                + ", ".join(str(c) for c in _available[:10])
+            )
+        _detail_text = "  \n".join(_details) if _details else "Unknown error"
         clear_rew_status_widget = mo.md(
             "<span style='color: red; font-weight: 700;'>Clear all failed.</span>"
-            f"  \n{_clear_rew_result.get('note', 'Unknown error')}"
+            f"  \n{_detail_text}"
         )
     else:
         clear_rew_status_widget = mo.md(

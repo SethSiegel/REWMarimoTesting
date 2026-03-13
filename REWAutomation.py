@@ -488,6 +488,10 @@ class REWAutomation():
                     if isinstance(raw.get(key), list):
                         raw = raw.get(key)
                         break
+                    if isinstance(raw.get(key), dict):
+                        names.extend([str(k) for k in raw.get(key).keys()])
+                        raw = []
+                        break
             if isinstance(raw, list):
                 for item in raw:
                     if isinstance(item, str):
@@ -549,6 +553,18 @@ class REWAutomation():
                 for cmd in _available:
                     cmd_l = cmd.lower()
                     if "all" in cmd_l and any(k in cmd_l for k in ("clear", "delete", "remove")):
+                        _candidates.append(cmd)
+            if not _candidates:
+                for cmd in _available:
+                    cmd_l = cmd.lower()
+                    if ("measurement" in cmd_l or "measurements" in cmd_l) and any(
+                        k in cmd_l for k in ("clear", "delete", "remove")
+                    ):
+                        _candidates.append(cmd)
+            if not _candidates:
+                for cmd in _available:
+                    cmd_l = cmd.lower()
+                    if any(k in cmd_l for k in ("clear", "delete", "remove")):
                         _candidates.append(cmd)
 
         if not _candidates:
