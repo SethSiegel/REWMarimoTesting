@@ -215,18 +215,15 @@ class REWAutomation():
                                 specified measurement
         """
         get_request_body = "/measurements/" + id + "/frequency-response"
-        query_parts = []
+        params = {}
         if smoothing:
-            smoothing_value = str(smoothing)
-            if not (smoothing_value.startswith('"') and smoothing_value.endswith('"')):
-                smoothing_value = f"\"{smoothing_value}\""
-            query_parts.append(f"smoothing={smoothing_value}")
+            params["smoothing"] = str(smoothing)
         if unit:
-            query_parts.append(f"unit={unit}")
+            params["unit"] = str(unit)
         if ppo:
-            query_parts.append(f"ppo={ppo}")
-        if query_parts:
-            get_request_body = get_request_body + "?" + "&".join(query_parts)
+            params["ppo"] = str(ppo)
+        if params:
+            get_request_body = f"{get_request_body}?{urlencode(params)}"
         get_response = self.get_request(get_request_body)
         return get_response
 
@@ -484,31 +481,115 @@ class REWAutomation():
 
         REW command labels vary by version; try a short fallback list.
         """
-        _fallback_commands = [
+        def _extract_command_names(raw):
+            names = []
+            if isinstance(raw, dict):
+                for key in ("commands", "choices", "options", "items"):
+                    if isinstance(raw.get(key), list):
+                        raw = raw.get(key)
+                        break
+            if isinstance(raw, list):
+                for item in raw:
+                    if isinstance(item, str):
+                        names.append(item)
+                    elif isinstance(item, dict):
+                        for key in ("command", "name", "label", "title", "value"):
+                            if item.get(key):
+                                names.append(str(item.get(key)))
+                                break
+            # preserve order, remove dupes
+            seen = set()
+            ordered = []
+            for name in names:
+                if name not in seen:
+                    ordered.append(name)
+                    seen.add(name)
+            return ordered
+
+        def _message_text(response):
+            if not isinstance(response, dict):
+                return ""
+            parts = [
+                response.get("message", ""),
+                response.get("error", ""),
+                response.get("status", ""),
+                response.get("_raw_text", ""),
+            ]
+            return " ".join(str(p) for p in parts if p).lower()
+
+        def _is_unrecognised(msg):
+            return "not a recognised command" in msg or "not recognized command" in msg
+
+        def _is_command_in_progress(msg):
+            return "command in progress" in msg or "already in progress" in msg
+
+        _preferred = [
+            "Clear all measurements",
             "Clear all",
+            "Delete all measurements",
             "Delete all",
-            "Clear All",
-            "Delete All",
+            "Remove all measurements",
+            "Remove all",
         ]
+
+        _commands_response = self.get_request("/measurements/commands")
+        _available = _extract_command_names(_commands_response)
+        if not _available and isinstance(_commands_response, dict):
+            if _commands_response.get("_json_parse_error") or _commands_response.get("error"):
+                _commands_response = self.get_request("/measurements/command/choices")
+                _available = _extract_command_names(_commands_response)
+        _candidates = []
+        if _available:
+            lowered = {c.lower(): c for c in _available}
+            for name in _preferred:
+                match = lowered.get(name.lower())
+                if match and match not in _candidates:
+                    _candidates.append(match)
+            if not _candidates:
+                for cmd in _available:
+                    cmd_l = cmd.lower()
+                    if "all" in cmd_l and any(k in cmd_l for k in ("clear", "delete", "remove")):
+                        _candidates.append(cmd)
+
+        if not _candidates:
+            _candidates = _preferred
+
         _last_response = None
-        for _command in _fallback_commands:
+        for _command in _candidates:
             _body = {"command": _command}
             _response = self.post_request("/measurements/command", _body)
             _last_response = _response
-            if isinstance(_response, dict):
-                _message = str(_response.get("message", "")).lower()
-                if "not a recognised command" in _message:
-                    continue
+            _msg = _message_text(_response)
+            if _is_command_in_progress(_msg):
+                self.post_request(
+                    "/application/command",
+                    {"command": "Clear command in progress"},
+                )
+                _response = self.post_request("/measurements/command", _body)
+                _last_response = _response
+                _msg = _message_text(_response)
+            if _is_unrecognised(_msg):
+                continue
             return {
                 "status": "ok",
                 "command_used": _command,
                 "response": _response,
+                "available_commands": _available,
             }
+
+        _error = "No supported clear-all command found for this REW version."
+        _note = _error
+        if _available:
+            _note = f"{_error} Available commands: {', '.join(_available[:10])}"
+        elif _last_response:
+            _note = f"{_error} Last response: {_last_response}"
         return {
             "status": "failed",
+            "note": _note,
             "command_used": None,
             "response": _last_response,
-            "error": "No supported clear-all command found for this REW version.",
+            "available_commands": _available,
+            "error": _error,
         }
 
     def post_command_shutdown(self):
