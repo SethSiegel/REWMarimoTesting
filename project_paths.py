@@ -80,6 +80,32 @@ def get_stepped_sine_dir():
     return get_data_root() / "stepped-sine"
 
 
+def get_tuning_root():
+    return get_repo_root() / "tuning_files"
+
+
+def get_tuning_presets_dir():
+    return get_tuning_root() / "presets"
+
+
+def get_tuning_profiles_dir():
+    return get_tuning_root() / "profiles"
+
+
+def get_tuning_exports_dir():
+    return get_tuning_root() / "exports"
+
+
 def ensure_data_dirs():
     for directory in (get_mdat_dir(), get_json_dir(), get_txt_dir(), get_stepped_sine_dir()):
+        directory.mkdir(parents=True, exist_ok=True)
+
+
+def ensure_tuning_dirs():
+    for directory in (
+        get_tuning_root(),
+        get_tuning_presets_dir(),
+        get_tuning_profiles_dir(),
+        get_tuning_exports_dir(),
+    ):
         directory.mkdir(parents=True, exist_ok=True)
