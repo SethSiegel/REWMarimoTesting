@@ -34,6 +34,7 @@ with app.setup:
     from project_paths import _load_dotenv
 
 
+
 @app.cell
 def _():
     def sdm_safe_float(_value):
@@ -508,15 +509,17 @@ def _(measurement_state, refresh_control):
 
 
 @app.cell
-def _(measurement_state):
+def _(measurement_state, refresh_control):
+    _ = refresh_control.value
     _data = measurement_state().get("data") or []
     _x = [row["elapsed_s"] for row in _data if row.get("value") is not None]
     _y = [row["value"] for row in _data if row.get("value") is not None]
     _unit = _data[-1]["unit"] if _data else ""
 
     if not _x:
-        mo.md("Plot will appear after the first numeric sample.")
+        plot_view = mo.md("Plot will appear after the first numeric sample.")
     else:
+        mo.md("### Measurement Plot")
         _fig = go.Figure(
             data=[
                 go.Scatter(
@@ -533,8 +536,8 @@ def _(measurement_state):
             margin=dict(l=40, r=20, t=40, b=40),
             height=360,
         )
-        mo.ui.plotly(_fig)
-    return
+        plot_view = mo.ui.plotly(_fig)
+    plot_view
 
 
 if __name__ == "__main__":
