@@ -18,6 +18,7 @@ app = marimo.App(app_title="SDM30xx Meter")
 
 with app.setup:
     import sys
+    import os
     import time
     from datetime import datetime
     import pathlib as _pathlib
@@ -30,6 +31,7 @@ with app.setup:
         sys.path.insert(0, str(repo_root))
 
     from SDM30xx_SCPI import SDM30xx_SCPI
+    from project_paths import _load_dotenv
 
 
 @app.cell
@@ -98,9 +100,12 @@ def _():
 
 @app.cell
 def _():
+    _load_dotenv()
+    multimeter_ip = os.getenv("MULTIMETER_IP") or ""
+    
     sdm_ip_input = mo.ui.text(
         label="SDM30xx IP Address",
-        value="192.168.1.202",
+        value=multimeter_ip,
         full_width=True,
     )
     sdm_port_input = mo.ui.number(
@@ -487,18 +492,19 @@ def _(measurement_state):
 
 
 @app.cell
-def _(measurement_state):
+def _(measurement_state, refresh_control):
+    _ = refresh_control.value
     _data = measurement_state().get("data") or []
     if not _data:
-        mo.md("No samples yet.")
+        table_view = mo.md("No samples yet.")
     else:
-        mo.ui.table(
+        table_view = mo.ui.table(
             _data,
             page_size=25,
             label="Live Samples",
             show_download=False,
         )
-    return
+    table_view
 
 
 @app.cell
