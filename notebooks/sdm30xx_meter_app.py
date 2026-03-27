@@ -23,6 +23,7 @@ with app.setup:
     from datetime import datetime
     import pathlib as _pathlib
     import socket
+    import math
     import plotly.graph_objects as go
     import marimo as mo
 
@@ -269,6 +270,8 @@ def _():
             "data": [],
             "last_sample_time": None,
             "client": None,
+            "last_query_ms": None,
+            "target_samples": None,
         }
     )
     return measurement_state, set_measurement_state
@@ -321,11 +324,14 @@ def _(
             _client = SDM30xx_SCPI(_ip, _port)
             _start = time.time()
             _data = []
+            _target_samples = max(1, math.ceil(_duration / _interval))
             _value, _raw, _unit, _note = sdm_query_measurement(
                 _client, measurement_type_select.value
             )
             _elapsed = 0.0
-            _timestamp = datetime.now().isoformat(timespec="seconds")
+            _timestamp = datetime.fromtimestamp(_start + _elapsed).isoformat(
+                timespec="milliseconds"
+            )
             if _raw is None and _value is None:
                 sdm_close_client(_client)
                 set_measurement_state(
@@ -340,6 +346,7 @@ def _(
                         "data": [],
                         "last_sample_time": None,
                         "client": None,
+                        "target_samples": None,
                     }
                 )
             else:
@@ -368,6 +375,7 @@ def _(
                         "data": _data,
                         "last_sample_time": _start,
                         "client": _client,
+                        "target_samples": _target_samples,
                     }
                 )
     return
@@ -409,12 +417,13 @@ def _(measurement_state, refresh_control, sdm_close_client, sdm_query_measuremen
         mo.stop(True)
 
     _start = _state.get("start_time") or time.time()
-    _duration = _state.get("duration_s") or 0
     _interval = _state.get("interval_s") or 1.0
     _last = _state.get("last_sample_time")
     _now = time.time()
+    _target_samples = _state.get("target_samples")
+    _data = list(_state.get("data") or [])
 
-    if _now - _start >= _duration:
+    if _target_samples is not None and len(_data) >= _target_samples:
         sdm_close_client(_client)
         set_measurement_state(
             {
@@ -426,45 +435,61 @@ def _(measurement_state, refresh_control, sdm_close_client, sdm_query_measuremen
         )
         mo.stop(True)
 
-    if _last is not None and _now - _last < max(_interval * 0.9, 0.01):
-        mo.stop(True)
+    if _last is None:
+        _last = _start
 
-    _value, _raw, _unit, _note = sdm_query_measurement(
-        _client, _state.get("measure_type") or "Voltage"
-    )
-    if _raw is None and _value is None:
-        sdm_close_client(_client)
-        set_measurement_state(
+    _remaining = _target_samples - len(_data) if _target_samples is not None else None
+    _samples_due = int(max(0.0, _now - _last) // _interval)
+    _samples_due = max(1, _samples_due)
+    _max_samples_per_tick = 5
+    if _remaining is not None:
+        _samples_due = min(_samples_due, _remaining)
+
+    _latest_query_ms = None
+    for _ in range(min(_samples_due, _max_samples_per_tick)):
+        _query_start = time.perf_counter()
+        _value, _raw, _unit, _note = sdm_query_measurement(
+            _client, _state.get("measure_type") or "Voltage"
+        )
+        _latest_query_ms = round((time.perf_counter() - _query_start) * 1000.0, 1)
+        _last = _last + _interval
+        if _raw is None and _value is None:
+            sdm_close_client(_client)
+            set_measurement_state(
+                {
+                    **_state,
+                    "running": False,
+                    "status": "error",
+                    "error": _note or "No response from SDM30xx during sampling.",
+                    "client": None,
+                    "last_query_ms": _latest_query_ms,
+                }
+            )
+            mo.stop(True)
+
+        _elapsed = _last - _start
+        _timestamp = datetime.fromtimestamp(_start + _elapsed).isoformat(
+            timespec="milliseconds"
+        )
+        _data.append(
             {
-                **_state,
-                "running": False,
-                "status": "error",
-                "error": _note or "No response from SDM30xx during sampling.",
-                "client": None,
+                "sample": len(_data) + 1,
+                "elapsed_s": round(_elapsed, 3),
+                "timestamp": _timestamp,
+                "value": _value,
+                "unit": _unit,
+                "raw": _raw,
+                "ok": _value is not None,
+                "note": _note,
             }
         )
-        mo.stop(True)
-    _elapsed = _now - _start
-    _timestamp = datetime.now().isoformat(timespec="seconds")
-    _data = list(_state.get("data") or [])
-    _data.append(
-        {
-            "sample": len(_data) + 1,
-            "elapsed_s": round(_elapsed, 3),
-            "timestamp": _timestamp,
-            "value": _value,
-            "unit": _unit,
-            "raw": _raw,
-            "ok": _value is not None,
-            "note": _note,
-        }
-    )
 
     set_measurement_state(
         {
             **_state,
             "data": _data,
-            "last_sample_time": _now,
+            "last_sample_time": _last,
+            "last_query_ms": _latest_query_ms or _state.get("last_query_ms"),
         }
     )
     return
@@ -478,34 +503,34 @@ def _(measurement_state):
     _count = len(_state.get("data") or [])
     _duration = _state.get("duration_s")
     _interval = _state.get("interval_s")
+    _last_query_ms = _state.get("last_query_ms")
+    _target_samples = _state.get("target_samples")
     _status_lines = [
         f"Status: `{_status}`",
-        f"Samples: `{_count}`",
     ]
+    if _target_samples is not None:
+        _status_lines.append(f"Samples: `{_count}` / `{_target_samples}`")
+        _pct = 0.0 if _target_samples == 0 else (_count / _target_samples) * 100.0
+        _status_lines.append(f"Progress: `{_pct:.1f}%`")
+    else:
+        _status_lines.append(f"Samples: `{_count}`")
     if _duration is not None:
         _status_lines.append(f"Duration: `{_duration}` seconds")
     if _interval is not None:
         _status_lines.append(f"Interval: `{_interval}` seconds")
+    if _last_query_ms is not None:
+        _status_lines.append(f"Last query: `{_last_query_ms} ms`")
     if _error:
         _status_lines.append(f"Error: `{_error}`")
-    mo.md("  \n".join(_status_lines))
-    return
-
-
-@app.cell
-def _(measurement_state, refresh_control):
-    _ = refresh_control.value
-    _data = measurement_state().get("data") or []
-    if not _data:
-        table_view = mo.md("No samples yet.")
-    else:
-        table_view = mo.ui.table(
-            _data,
-            page_size=25,
-            label="Live Samples",
-            show_download=False,
+    status_md = mo.md("  \n".join(_status_lines))
+    if _target_samples is not None:
+        progress_bar = mo.md(
+            f"<progress value='{_pct:.1f}' max='100' style='width: 100%;'></progress>"
         )
-    table_view
+        status_view = mo.vstack([status_md, progress_bar])
+    else:
+        status_view = status_md
+    status_view
 
 
 @app.cell
@@ -538,6 +563,22 @@ def _(measurement_state, refresh_control):
         )
         plot_view = mo.ui.plotly(_fig)
     plot_view
+
+
+@app.cell
+def _(measurement_state, refresh_control):
+    _ = refresh_control.value
+    _data = measurement_state().get("data") or []
+    if not _data:
+        table_view = mo.md("No samples yet.")
+    else:
+        table_view = mo.ui.table(
+            _data,
+            page_size=25,
+            label="Live Samples",
+            show_download=False,
+        )
+    table_view
 
 
 if __name__ == "__main__":
