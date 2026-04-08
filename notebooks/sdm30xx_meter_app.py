@@ -7,7 +7,7 @@
 # [tool.marimo.opengraph]
 # title = "SDM30xx Meter"
 # description = "LAN-connected SDM30xx voltage/impedance sampling dashboard."
-# image = "https://www.roomeqwizard.com/help/images/REW%20logo.png"
+# image = "https://siglentna.com/wp-content/uploads/2017/12/New-Siglent-Logo.png"
 # ///
 
 import marimo
