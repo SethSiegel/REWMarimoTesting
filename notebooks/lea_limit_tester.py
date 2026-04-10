@@ -22,6 +22,7 @@ with app.setup:
     import time
     import asyncio
     import threading
+    import os
     from pathlib import Path
     import marimo as mo
     import plotly.graph_objects as go
@@ -38,22 +39,21 @@ with app.setup:
 
 @app.cell
 def _():
+    def lt_run_loop(loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
     def lt_create_event_loop():
-        _loop = asyncio.new_event_loop()
-
-        def _runner():
-            asyncio.set_event_loop(_loop)
-            _loop.run_forever()
-
-        _thread = threading.Thread(target=_runner, daemon=True)
-        _thread.start()
-        return _loop, _thread
+        loop = asyncio.new_event_loop()
+        thread = threading.Thread(target=lt_run_loop, args=(loop,), daemon=True)
+        thread.start()
+        return loop, thread
 
     def lt_submit(loop, coro, timeout=10.0):
         future = asyncio.run_coroutine_threadsafe(coro, loop)
         return future.result(timeout=timeout)
 
-    return lt_create_event_loop, lt_submit
+    return lt_create_event_loop, lt_run_loop, lt_submit
 
 
 @app.cell
@@ -70,9 +70,20 @@ def _():
 
 @app.cell
 def _():
+    _env_ip = (os.getenv("LEA_IP") or "").strip()
+    _default_ws = "ws://192.168.1.100:1234"
+    if _env_ip:
+        if _env_ip.startswith(("ws://", "wss://")):
+            _default_ws = _env_ip
+        else:
+            _default_ws = f"ws://{_env_ip}"
+        _after_scheme = _default_ws.split("://", 1)[1]
+        if ":" not in _after_scheme:
+            _default_ws = f"{_default_ws}:1234"
+
     amp_address_input = mo.ui.text(
         label="LEA WebSocket Address",
-        value="ws://192.168.1.100:1234",
+        value=_default_ws,
         full_width=True,
     )
     amp_address_input
@@ -271,207 +282,168 @@ def _():
 
 
 @app.cell
-def _(channel_ui_defaults_state):
-    _defaults = channel_ui_defaults_state()
-    channel_select = mo.ui.dropdown(
-        options=[str(ch) for ch in range(1, 9)],
-        value="1",
-        label="Channel",
+def _():
+    apply_request_state, set_apply_request_state = mo.state(
+        {
+            "channels": [],
+            "nonce": 0.0,
+        }
     )
-    output_gain_slider = mo.ui.number(
-        label="Output Gain (dB)",
-        value=_defaults.get("output_gain", -40.0),
-        start=-60.0,
-        stop=0.0,
-        step=0.5,
-    )
-    output_mute_checkbox = mo.ui.checkbox(
-        label="Mute Output",
-        value=bool(_defaults.get("output_mute", False)),
-    )
-    set_output_gain_button = mo.ui.run_button(label="Set Output Gain")
-
-    generator_fader_slider = mo.ui.number(
-        label="Generator Fader (dB)",
-        value=_defaults.get("generator_fader", -40.0),
-        start=-60.0,
-        stop=0.0,
-        step=0.5,
-    )
-    generator_enable_checkbox = mo.ui.checkbox(
-        label="Enable Generator",
-        value=bool(_defaults.get("generator_enabled", False)),
-    )
-    set_generator_button = mo.ui.run_button(label="Set Generator Fader")
-    arm_channel_button = mo.ui.run_button(label="Arm Channel (One-Click)")
-
-    mo.hstack([channel_select, output_gain_slider, output_mute_checkbox, set_output_gain_button])
-    mo.hstack([generator_fader_slider, generator_enable_checkbox, set_generator_button])
-    arm_channel_button
-    return (
-        arm_channel_button,
-        channel_select,
-        generator_enable_checkbox,
-        generator_fader_slider,
-        output_gain_slider,
-        output_mute_checkbox,
-        set_generator_button,
-        set_output_gain_button,
-    )
+    return apply_request_state, set_apply_request_state
 
 
 @app.cell
-def _():
-    channel_ui_defaults_state, set_channel_ui_defaults_state = mo.state(
-        {
-            "output_gain": -40.0,
-            "output_mute": False,
-            "generator_fader": -40.0,
-            "generator_enabled": False,
-        }
+def _(channel_options, set_apply_request_state):
+    channel_control_widgets = {}
+    rows = []
+
+    header = mo.hstack(
+        [
+            mo.md("**Ch**"),
+            mo.md("**Signal On**"),
+            mo.md("**Gen Fader (dB)**"),
+            mo.md("**Output Gain (dB)**"),
+            mo.md("**Mute**"),
+            mo.md("**Apply**"),
+        ]
     )
-    return channel_ui_defaults_state, set_channel_ui_defaults_state
+    rows.append(header)
+
+    for _ch in channel_options:
+        gen_enable = mo.ui.checkbox(label="", value=False)
+        gen_fader = mo.ui.number(label="", value=-40.0, start=-60.0, stop=0.0, step=0.5)
+        out_gain = mo.ui.number(label="", value=-40.0, start=-60.0, stop=0.0, step=0.5)
+        mute = mo.ui.checkbox(label="", value=False)
+        apply_btn = mo.ui.run_button(
+            label=f"Apply Ch {_ch}",
+            on_change=lambda _v, _ch=_ch: set_apply_request_state(
+                {
+                    "channels": [str(_ch)],
+                    "nonce": time.time(),
+                }
+            ),
+        )
+
+        rows.append(
+            mo.hstack(
+                [
+                    mo.md(f"**{_ch}**"),
+                    gen_enable,
+                    gen_fader,
+                    out_gain,
+                    mute,
+                    apply_btn,
+                ]
+            )
+        )
+
+        channel_control_widgets[str(_ch)] = {
+            "gen_enable": gen_enable,
+            "gen_fader": gen_fader,
+            "out_gain": out_gain,
+            "mute": mute,
+            "apply": apply_btn,
+        }
+
+    apply_all_button = mo.ui.run_button(
+        label="Apply All Channels",
+        on_change=lambda _v: set_apply_request_state(
+            {
+                "channels": ["*"],
+                "nonce": time.time(),
+            }
+        ),
+    )
+    rows.append(apply_all_button)
+    mo.vstack(rows)
+    return apply_all_button, channel_control_widgets
 
 
 @app.cell
-def _():
-    arm_status_state, set_arm_status_state = mo.state(
-        {
-            "status": "idle",
-            "note": "Click Arm Channel to auto-enable signal and output.",
-        }
-    )
-    return arm_status_state, set_arm_status_state
+def _(limit_state):
+    _state = limit_state()
+    _monitor = _state.get("monitor")
+    _detected = []
+    if _monitor is not None:
+        try:
+            _detected = sorted(list(_monitor.detected_channels))
+        except Exception:
+            _detected = []
+        if not _detected:
+            try:
+                _count = int(getattr(_monitor, "channel_count", 0) or 0)
+            except Exception:
+                _count = 0
+            if _count > 0:
+                _detected = list(range(1, _count + 1))
+        if not _detected:
+            try:
+                _latest = _monitor.get_latest_data()
+                _keys = set()
+                for _bucket in ("levels", "voltage", "current", "power", "impedance"):
+                    _keys.update((_latest.get(_bucket) or {}).keys())
+                _detected = sorted([int(k) for k in _keys if str(k).isdigit()])
+            except Exception:
+                _detected = []
+    if not _detected:
+        _detected = list(range(1, 5))
+    channel_options = [str(ch) for ch in _detected]
+    return (channel_options,)
 
 
 @app.cell
 def _(
-    arm_channel_button,
-    channel_select,
-    generator_enable_checkbox,
-    generator_fader_slider,
+    apply_request_state,
+    channel_control_widgets,
     limit_state,
     lt_submit,
     loop_state,
-    output_gain_slider,
-    output_mute_checkbox,
-    set_generator_button,
-    set_output_gain_button,
-    set_arm_status_state,
-    set_channel_ui_defaults_state,
-    signal_frequency_input,
-    signal_type_select,
+    set_apply_request_state,
 ):
     _state = limit_state()
     _monitor = _state.get("monitor")
     _loop = loop_state().get("loop")
     mo.stop(_monitor is None or _loop is None or not _state.get("connected"))
 
-    _channel = int(channel_select.value or 1)
+    def _apply_channel(_ch_key, _widgets):
+        _enabled = bool(_widgets["gen_enable"].value)
+        _gen_fader = float(_widgets["gen_fader"].value or -60.0)
+        _out_gain = float(_widgets["out_gain"].value or -60.0)
+        _mute = bool(_widgets["mute"].value)
 
-    if set_output_gain_button.value:
-        _gain = float(output_gain_slider.value or -60.0)
-        _mute = bool(output_mute_checkbox.value)
         try:
-            lt_submit(_loop, _monitor.set_output_gain(_channel, _gain, _mute), timeout=5.0)
+            lt_submit(
+                _loop,
+                _monitor.enable_signal_generator(int(_ch_key), _enabled, _gen_fader),
+                timeout=5.0,
+            )
         except Exception:
             pass
 
-    if set_generator_button.value:
-        _fader = float(generator_fader_slider.value or -60.0)
-        _enabled = bool(generator_enable_checkbox.value)
         try:
-            lt_submit(_loop, _monitor.enable_signal_generator(_channel, _enabled, _fader), timeout=5.0)
+            lt_submit(
+                _loop,
+                _monitor.set_output_gain(int(_ch_key), _out_gain, _mute),
+                timeout=5.0,
+            )
         except Exception:
             pass
 
-    if arm_channel_button.value:
-        _signal_type = signal_type_select.value or "off"
-        _frequency = float(signal_frequency_input.value or 0) or None
-        if _signal_type == "off":
-            _frequency = None
-        _fader = float(generator_fader_slider.value or -60.0)
-        _gain = float(output_gain_slider.value or -60.0)
-        _arm_errors = []
-        _sig_ok = None
-        _gen_ok = None
-        _out_ok = None
+    _request = apply_request_state()
+    _channels = [str(ch) for ch in (_request.get("channels") or [])]
+    mo.stop(not _channels)
 
-        try:
-            _sig_ok = lt_submit(
-                _loop,
-                _monitor.set_signal_generator(_signal_type, _frequency),
-                timeout=8.0,
-            )
-        except Exception as _exc:
-            _arm_errors.append(f"Signal generator: {_exc}")
-
-        try:
-            _gen_ok = lt_submit(
-                _loop,
-                _monitor.enable_signal_generator(_channel, True, _fader),
-                timeout=5.0,
-            )
-        except Exception as _exc:
-            _arm_errors.append(f"Generator enable: {_exc}")
-
-        try:
-            _out_ok = lt_submit(
-                _loop,
-                _monitor.set_output_gain(_channel, _gain, False),
-                timeout=5.0,
-            )
-        except Exception as _exc:
-            _arm_errors.append(f"Output gain: {_exc}")
-
-        set_channel_ui_defaults_state(
-            {
-                "output_gain": _gain,
-                "output_mute": False,
-                "generator_fader": _fader,
-                "generator_enabled": True,
-            }
-        )
-
-        if _arm_errors or _sig_ok is False or _gen_ok is False or _out_ok is False:
-            _note = " ; ".join(_arm_errors) if _arm_errors else "One or more commands failed."
-            set_arm_status_state(
-                {
-                    "status": "error",
-                    "note": _note,
-                }
-            )
-        else:
-            set_arm_status_state(
-                {
-                    "status": "ok",
-                    "note": (
-                        f"Armed channel {_channel}: {_signal_type} "
-                        f"{'' if _frequency is None else f'@ {_frequency:.0f} Hz'}, "
-                        f"gen fader {_fader:.1f} dB, output gain {_gain:.1f} dB."
-                    ),
-                }
-            )
-    return
-
-
-@app.cell
-def _(arm_status_state):
-    _state = arm_status_state()
-    _status = _state.get("status", "idle")
-    _note = _state.get("note", "")
-    if _status == "ok":
-        arm_status_widget = mo.md(
-            f"<span style='color: green; font-weight: 700;'>Armed</span>  \n{_note}"
-        )
-    elif _status == "error":
-        arm_status_widget = mo.md(
-            f"<span style='color: red; font-weight: 700;'>Arm Failed</span>  \n{_note}"
-        )
+    if _channels == ["*"]:
+        for _ch_key, _widgets in channel_control_widgets.items():
+            _apply_channel(_ch_key, _widgets)
     else:
-        arm_status_widget = mo.md(_note)
-    arm_status_widget
-    return (arm_status_widget,)
+        for _ch_key in _channels:
+            _widgets = channel_control_widgets.get(str(_ch_key))
+            if _widgets:
+                _apply_channel(_ch_key, _widgets)
+
+    set_apply_request_state({"channels": [], "nonce": time.time()})
+    return
 
 
 @app.cell
@@ -547,7 +519,7 @@ def _(limit_state):
 @app.cell
 def _():
     refresh_control = mo.ui.refresh(
-        options=["0.5s", "1s", "2s"],
+        options=["0.1s", "0.5s", "1s", "2s"],
         default_interval="1s",
         label="Live data refresh",
     )
@@ -565,6 +537,7 @@ def _():
             "current": {str(ch): [] for ch in range(1, 9)},
             "power": {str(ch): [] for ch in range(1, 9)},
             "impedance": {str(ch): [] for ch in range(1, 9)},
+            "last_append_time": None,
         }
     )
     return history_state, set_history_state
@@ -583,8 +556,10 @@ def _(history_state, limit_state, refresh_control, set_history_state):
     _start_time = _history.get("start_time")
     if _start_time is None:
         _start_time = _now
-
-    _max_points = 300
+    _max_points = 200
+    _min_interval = 0.1
+    _last_append = _history.get("last_append_time")
+    _should_append = _last_append is None or (_now - _last_append) >= _min_interval
 
     def _copy_metric(_metric_dict):
         return {k: list(v) for k, v in (_metric_dict or {}).items()}
@@ -596,11 +571,8 @@ def _(history_state, limit_state, refresh_control, set_history_state):
         "current": _copy_metric(_history.get("current")),
         "power": _copy_metric(_history.get("power")),
         "impedance": _copy_metric(_history.get("impedance")),
+        "last_append_time": _history.get("last_append_time"),
     }
-
-    _new_history["timestamps"].append(_now)
-    if len(_new_history["timestamps"]) > _max_points:
-        _new_history["timestamps"] = _new_history["timestamps"][-_max_points:]
 
     def _append_metric(_metric_map, _channel, _value):
         if _value is None:
@@ -619,18 +591,24 @@ def _(history_state, limit_state, refresh_control, set_history_state):
     _power = latest_data.get("power", {})
     _impedance = latest_data.get("impedance", {})
 
-    for _ch in range(1, 9):
-        _ch_str = str(_ch)
-        _append_metric(_new_history["voltage"], _ch_str, _voltage.get(_ch_str))
-        _append_metric(_new_history["current"], _ch_str, _current.get(_ch_str))
-        _append_metric(_new_history["power"], _ch_str, _power.get(_ch_str))
-        _append_metric(
-            _new_history["impedance"],
-            _ch_str,
-            _impedance.get(_ch_str, {}).get("measuredImpedance"),
-        )
+    if _should_append:
+        _new_history["timestamps"].append(_now)
+        if len(_new_history["timestamps"]) > _max_points:
+            _new_history["timestamps"] = _new_history["timestamps"][-_max_points:]
 
-    set_history_state(_new_history)
+        for _ch in range(1, 9):
+            _ch_str = str(_ch)
+            _append_metric(_new_history["voltage"], _ch_str, _voltage.get(_ch_str))
+            _append_metric(_new_history["current"], _ch_str, _current.get(_ch_str))
+            _append_metric(_new_history["power"], _ch_str, _power.get(_ch_str))
+            _append_metric(
+                _new_history["impedance"],
+                _ch_str,
+                _impedance.get(_ch_str, {}).get("measuredImpedance"),
+            )
+
+        _new_history["last_append_time"] = _now
+        set_history_state(_new_history)
     return (latest_data,)
 
 
