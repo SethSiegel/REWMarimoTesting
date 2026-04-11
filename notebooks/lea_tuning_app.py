@@ -210,17 +210,7 @@ def _():
             "source_id": None,
         }
     )
-    action_state, set_action_state = mo.state(
-        {
-            "load_preset": 0,
-            "load_profile": 0,
-            "new_preset": 0,
-            "new_profile": 0,
-            "derive_from_preset": 0,
-            "derive_from_profile": 0,
-        }
-    )
-    return action_state, editor_state, set_action_state, set_editor_state
+    return editor_state, set_editor_state
 
 
 @app.cell
@@ -292,7 +282,6 @@ def _():
 
 @app.cell
 def _(
-    action_state,
     derive_from_preset_button,
     derive_from_profile_button,
     load_preset_button,
@@ -303,35 +292,27 @@ def _(
     preset_select,
     profile_label_to_id,
     profile_select,
-    set_action_state,
     set_editor_state,
 ):
-    _state = dict(action_state())
-
-    if load_preset_button.value > _state["load_preset"]:
-        _state["load_preset"] = load_preset_button.value
+    if load_preset_button.value:
         _preset_id = preset_label_to_id.get(preset_select.value)
         _preset = load_preset(_preset_id) if _preset_id else None
         if _preset:
             set_editor_state({"kind": "preset", "data": _preset, "source_id": _preset_id})
 
-    if load_profile_button.value > _state["load_profile"]:
-        _state["load_profile"] = load_profile_button.value
+    if load_profile_button.value:
         _profile_id = profile_label_to_id.get(profile_select.value)
         _profile = load_profile(_profile_id) if _profile_id else None
         if _profile:
             set_editor_state({"kind": "profile", "data": _profile, "source_id": _profile_id})
 
-    if new_preset_button.value > _state["new_preset"]:
-        _state["new_preset"] = new_preset_button.value
+    if new_preset_button.value:
         set_editor_state({"kind": "preset", "data": new_preset_template(), "source_id": None})
 
-    if new_profile_button.value > _state["new_profile"]:
-        _state["new_profile"] = new_profile_button.value
+    if new_profile_button.value:
         set_editor_state({"kind": "profile", "data": new_profile_template(), "source_id": None})
 
-    if derive_from_preset_button.value > _state["derive_from_preset"]:
-        _state["derive_from_preset"] = derive_from_preset_button.value
+    if derive_from_preset_button.value:
         _preset_id = preset_label_to_id.get(preset_select.value)
         _preset = load_preset(_preset_id) if _preset_id else None
         if _preset:
@@ -341,8 +322,7 @@ def _(
             _profile["derived_from_preset_id"] = _preset_id
             set_editor_state({"kind": "profile", "data": _profile, "source_id": None})
 
-    if derive_from_profile_button.value > _state["derive_from_profile"]:
-        _state["derive_from_profile"] = derive_from_profile_button.value
+    if derive_from_profile_button.value:
         _profile_id = profile_label_to_id.get(profile_select.value)
         _profile = load_profile(_profile_id) if _profile_id else None
         if _profile:
@@ -354,7 +334,6 @@ def _(
             _derived["mounting_context"] = _profile.get("mounting_context", "")
             set_editor_state({"kind": "profile", "data": _derived, "source_id": None})
 
-    set_action_state(_state)
     return
 
 
