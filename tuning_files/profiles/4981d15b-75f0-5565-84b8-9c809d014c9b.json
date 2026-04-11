@@ -1,0 +1,348 @@
+{
+  "schema_version": 1,
+  "id": "4981d15b-75f0-5565-84b8-9c809d014c9b",
+  "name": "CES 2026 / 021226 - CES Stage",
+  "parent_profile_id": null,
+  "derived_from_preset_id": null,
+  "mounting_context": "CES Stage",
+  "notes": "Imported from tuning_files/Embodied Sound tunings/CES 2026/021226/CES_Stage_HI.json and tuning_files/Embodied Sound tunings/CES 2026/021226/CES_Stage_LO.json",
+  "tags": [
+    "source:embodied_sound_tunings",
+    "group:ces_2026_/_021226"
+  ],
+  "measurement_links": [
+    {
+      "kind": "lea_json",
+      "relative_path": "tuning_files/Embodied Sound tunings/CES 2026/021226/CES_Stage_HI.json"
+    },
+    {
+      "kind": "lea_json",
+      "relative_path": "tuning_files/Embodied Sound tunings/CES 2026/021226/CES_Stage_LO.json"
+    }
+  ],
+  "channels": {
+    "1": {
+      "gain_db": 0.0,
+      "delay_ms": 0.0,
+      "polarity": "normal",
+      "peq": [
+        {
+          "id": "1",
+          "type": "Parametric",
+          "frequency_hz": 56.42083,
+          "gain_db": -10.0,
+          "q": 8.0,
+          "enabled": true
+        },
+        {
+          "id": "2",
+          "type": "Parametric",
+          "frequency_hz": 123.782364,
+          "gain_db": -7.0,
+          "q": 4.0,
+          "enabled": true
+        },
+        {
+          "id": "3",
+          "type": "Parametric",
+          "frequency_hz": 44.433323,
+          "gain_db": -3.6784134,
+          "q": 2.6000001,
+          "enabled": true
+        },
+        {
+          "id": "4",
+          "type": "Parametric",
+          "frequency_hz": 75.812,
+          "gain_db": -6.2334805,
+          "q": 0.7,
+          "enabled": true
+        },
+        {
+          "id": "5",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "6",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "7",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "8",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        }
+      ],
+      "crossover": {
+        "bandGainAndDelay": {
+          "delay": 0.0,
+          "gain": -13.0,
+          "invert": false
+        },
+        "highPassFilter": {
+          "enable": true,
+          "type": "Butterworth 12dB/oct",
+          "frequency": 50.0
+        },
+        "lowPassFilter": {
+          "enable": true,
+          "type": "Butterworth 18dB/oct",
+          "frequency": 128.0
+        }
+      },
+      "limiters": {
+        "rms": {
+          "attackTime": 1000.0,
+          "enable": false,
+          "releaseTime": 5000.0,
+          "threshold": 100.0
+        },
+        "peak": {
+          "attackTime": 10.0,
+          "enable": false,
+          "releaseTime": 100.0,
+          "threshold": 141.0
+        },
+        "loadMonitor": {
+          "enable": false,
+          "highLimit": 40.0,
+          "lowLimit": 4.0
+        },
+        "pilotToneDetector": {
+          "enable": false,
+          "openLimit": 80.0,
+          "sensitivity": 0.0,
+          "shortLimit": 100.0,
+          "timeElapsedForError": 50.0,
+          "toneFrequency": 20000.0
+        }
+      },
+      "routing": {
+        "inputSelector": {
+          "danteOnRamp": "Analog Input",
+          "mode": "Backup",
+          "primary": "Dante 1",
+          "primaryFader": 0.0,
+          "primaryThreshold": -60.0,
+          "secondary": "None",
+          "secondaryFader": 0.0,
+          "secondaryThreshold": -55.0,
+          "signalGeneratorEnable": false,
+          "signalGeneratorFader": -30.0,
+          "analog1MixFader": 0.0,
+          "analog2MixFader": 0.0,
+          "analog3MixFader": 0.0,
+          "analog4MixFader": 0.0,
+          "analog5MixFader": 0.0,
+          "analog6MixFader": 0.0,
+          "analog7MixFader": 0.0,
+          "analog8MixFader": 0.0,
+          "dante1MixFader": 0.0,
+          "dante2MixFader": 0.0,
+          "dante3MixFader": 0.0,
+          "dante4MixFader": 0.0,
+          "dante5MixFader": 0.0,
+          "dante6MixFader": 0.0,
+          "dante7MixFader": 0.0,
+          "dante8MixFader": 0.0
+        },
+        "output": {
+          "ZoneName": "ZoneName",
+          "enable": true,
+          "hiZHpfEnable": false,
+          "hiZHpfFrequency": 70.0,
+          "hiZLoZ": "LoZ",
+          "name": "Wall FL Lo",
+          "super8": false
+        },
+        "mute": false,
+        "hiZLoZ": "LoZ",
+        "source_channel_number": 1,
+        "source_device_id": "60:26:02:9E:3F:25",
+        "source_version": 2,
+        "source_file": "tuning_files/Embodied Sound tunings/CES 2026/021226/CES_Stage_LO.json"
+      }
+    },
+    "2": {
+      "gain_db": 0.0,
+      "delay_ms": 0.0,
+      "polarity": "normal",
+      "peq": [
+        {
+          "id": "1",
+          "type": "Parametric",
+          "frequency_hz": 224.8979,
+          "gain_db": -10.0,
+          "q": 6.5,
+          "enabled": true
+        },
+        {
+          "id": "2",
+          "type": "Parametric",
+          "frequency_hz": 136.87836,
+          "gain_db": -8.788546,
+          "q": 5.5,
+          "enabled": true
+        },
+        {
+          "id": "3",
+          "type": "Parametric",
+          "frequency_hz": 403.50836,
+          "gain_db": -8.700441,
+          "q": 2.4,
+          "enabled": true
+        },
+        {
+          "id": "4",
+          "type": "Parametric",
+          "frequency_hz": 1174.656,
+          "gain_db": -7.5,
+          "q": 3.0,
+          "enabled": true
+        },
+        {
+          "id": "5",
+          "type": "Parametric",
+          "frequency_hz": 1966.7571,
+          "gain_db": -8.2,
+          "q": 2.3,
+          "enabled": true
+        },
+        {
+          "id": "6",
+          "type": "Parametric",
+          "frequency_hz": 271.56766,
+          "gain_db": -6.497799,
+          "q": 1.3000001,
+          "enabled": true
+        },
+        {
+          "id": "7",
+          "type": "Parametric",
+          "frequency_hz": 595.79565,
+          "gain_db": -6.0,
+          "q": 2.5,
+          "enabled": true
+        },
+        {
+          "id": "8",
+          "type": "HP Shelf 12dB/oct",
+          "frequency_hz": 7134.285,
+          "gain_db": 5.484582,
+          "q": 0.8,
+          "enabled": true
+        }
+      ],
+      "crossover": {
+        "bandGainAndDelay": {
+          "delay": 0.0,
+          "gain": -7.5,
+          "invert": false
+        },
+        "highPassFilter": {
+          "enable": true,
+          "type": "Butterworth 18dB/oct",
+          "frequency": 128.0
+        },
+        "lowPassFilter": {
+          "enable": false,
+          "type": "Butterworth 6dB/oct",
+          "frequency": 1000.0
+        }
+      },
+      "limiters": {
+        "rms": {
+          "attackTime": 1000.0,
+          "enable": false,
+          "releaseTime": 5000.0,
+          "threshold": 100.0
+        },
+        "peak": {
+          "attackTime": 10.0,
+          "enable": false,
+          "releaseTime": 100.0,
+          "threshold": 141.0
+        },
+        "loadMonitor": {
+          "enable": false,
+          "highLimit": 40.0,
+          "lowLimit": 4.0
+        },
+        "pilotToneDetector": {
+          "enable": false,
+          "openLimit": 80.0,
+          "sensitivity": 0.0,
+          "shortLimit": 100.0,
+          "timeElapsedForError": 50.0,
+          "toneFrequency": 20000.0
+        }
+      },
+      "routing": {
+        "inputSelector": {
+          "danteOnRamp": "Analog Input",
+          "mode": "Backup",
+          "primary": "Dante 1",
+          "primaryFader": 0.0,
+          "primaryThreshold": -60.0,
+          "secondary": "None",
+          "secondaryFader": 0.0,
+          "secondaryThreshold": -55.0,
+          "signalGeneratorEnable": false,
+          "signalGeneratorFader": -30.0,
+          "analog1MixFader": 0.0,
+          "analog2MixFader": 0.0,
+          "analog3MixFader": 0.0,
+          "analog4MixFader": 0.0,
+          "analog5MixFader": 0.0,
+          "analog6MixFader": 0.0,
+          "analog7MixFader": 0.0,
+          "analog8MixFader": 0.0,
+          "dante1MixFader": 0.0,
+          "dante2MixFader": 0.0,
+          "dante3MixFader": 0.0,
+          "dante4MixFader": 0.0,
+          "dante5MixFader": 0.0,
+          "dante6MixFader": 0.0,
+          "dante7MixFader": 0.0,
+          "dante8MixFader": 0.0
+        },
+        "output": {
+          "ZoneName": "ZoneName",
+          "enable": true,
+          "hiZHpfEnable": false,
+          "hiZHpfFrequency": 70.0,
+          "hiZLoZ": "LoZ",
+          "name": "Wall FL Hi",
+          "super8": false
+        },
+        "mute": false,
+        "hiZLoZ": "LoZ",
+        "source_channel_number": 2,
+        "source_device_id": "60:26:02:9E:3F:25",
+        "source_version": 2,
+        "source_file": "tuning_files/Embodied Sound tunings/CES 2026/021226/CES_Stage_HI.json"
+      }
+    }
+  },
+  "change_log": [],
+  "auto_tune_runs": [],
+  "created_at": "2026-04-10T17:03:09"
+}

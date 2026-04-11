@@ -1,0 +1,348 @@
+{
+  "schema_version": 1,
+  "id": "905893b7-b11c-5ea2-8850-35df578d8275",
+  "name": "CEDIA 2025 - cedia walls",
+  "parent_profile_id": null,
+  "derived_from_preset_id": null,
+  "mounting_context": "cedia walls",
+  "notes": "Imported from tuning_files/Embodied Sound tunings/CEDIA 2025/cedia walls hi.json and tuning_files/Embodied Sound tunings/CEDIA 2025/cedia walls lo.json",
+  "tags": [
+    "source:embodied_sound_tunings",
+    "group:cedia_2025"
+  ],
+  "measurement_links": [
+    {
+      "kind": "lea_json",
+      "relative_path": "tuning_files/Embodied Sound tunings/CEDIA 2025/cedia walls hi.json"
+    },
+    {
+      "kind": "lea_json",
+      "relative_path": "tuning_files/Embodied Sound tunings/CEDIA 2025/cedia walls lo.json"
+    }
+  ],
+  "channels": {
+    "1": {
+      "gain_db": -20.8,
+      "delay_ms": 0.0,
+      "polarity": "normal",
+      "peq": [
+        {
+          "id": "1",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "2",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": true
+        },
+        {
+          "id": "3",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "4",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "5",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "6",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "7",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "8",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        }
+      ],
+      "crossover": {
+        "bandGainAndDelay": {
+          "delay": 0.0,
+          "gain": 0.0,
+          "invert": false
+        },
+        "highPassFilter": {
+          "enable": true,
+          "type": "Butterworth 24dB/oct",
+          "frequency": 50.0
+        },
+        "lowPassFilter": {
+          "enable": true,
+          "type": "Butterworth 18dB/oct",
+          "frequency": 200.0
+        }
+      },
+      "limiters": {
+        "rms": {
+          "attackTime": 1000.0,
+          "enable": false,
+          "releaseTime": 5000.0,
+          "threshold": 100.0
+        },
+        "peak": {
+          "attackTime": 10.0,
+          "enable": false,
+          "releaseTime": 100.0,
+          "threshold": 141.0
+        },
+        "loadMonitor": {
+          "enable": false,
+          "highLimit": 40.0,
+          "lowLimit": 4.0
+        },
+        "pilotToneDetector": {
+          "enable": false,
+          "openLimit": 80.0,
+          "sensitivity": 0.0,
+          "shortLimit": 100.0,
+          "timeElapsedForError": 50.0,
+          "toneFrequency": 20000.0
+        }
+      },
+      "routing": {
+        "inputSelector": {
+          "danteOnRamp": "Analog Input",
+          "mode": "Backup",
+          "primary": "Dante 1",
+          "primaryFader": 0.0,
+          "primaryThreshold": -60.0,
+          "secondary": "None",
+          "secondaryFader": 0.0,
+          "secondaryThreshold": -55.0,
+          "signalGeneratorEnable": false,
+          "signalGeneratorFader": -34.0,
+          "analog1MixFader": 0.0,
+          "analog2MixFader": 0.0,
+          "analog3MixFader": 0.0,
+          "analog4MixFader": 0.0,
+          "analog5MixFader": 0.0,
+          "analog6MixFader": 0.0,
+          "analog7MixFader": 0.0,
+          "analog8MixFader": 0.0,
+          "dante1MixFader": 0.0,
+          "dante2MixFader": 0.0,
+          "dante3MixFader": 0.0,
+          "dante4MixFader": 0.0,
+          "dante5MixFader": 0.0,
+          "dante6MixFader": 0.0,
+          "dante7MixFader": 0.0,
+          "dante8MixFader": 0.0
+        },
+        "output": {
+          "ZoneName": "ZoneName",
+          "enable": true,
+          "hiZHpfEnable": false,
+          "hiZHpfFrequency": 70.0,
+          "hiZLoZ": "LoZ",
+          "name": "Wall 1 LO",
+          "super8": false
+        },
+        "mute": false,
+        "hiZLoZ": "LoZ",
+        "source_channel_number": 1,
+        "source_device_id": "98:89:24:31:DE:D1",
+        "source_version": 2,
+        "source_file": "tuning_files/Embodied Sound tunings/CEDIA 2025/cedia walls lo.json"
+      }
+    },
+    "2": {
+      "gain_db": 0.0,
+      "delay_ms": 0.0,
+      "polarity": "normal",
+      "peq": [
+        {
+          "id": "1",
+          "type": "HP Shelf 12dB/oct",
+          "frequency_hz": 2151.9653,
+          "gain_db": 6.3698626,
+          "q": 0.79999995,
+          "enabled": true
+        },
+        {
+          "id": "2",
+          "type": "Parametric",
+          "frequency_hz": 3562.3096,
+          "gain_db": -4.497717,
+          "q": 1.5999999,
+          "enabled": true
+        },
+        {
+          "id": "3",
+          "type": "Parametric",
+          "frequency_hz": 1030.1731,
+          "gain_db": 2.4429216,
+          "q": 1.0,
+          "enabled": true
+        },
+        {
+          "id": "4",
+          "type": "Parametric",
+          "frequency_hz": 2417.4082,
+          "gain_db": -4.5890408,
+          "q": 3.6,
+          "enabled": true
+        },
+        {
+          "id": "5",
+          "type": "Parametric",
+          "frequency_hz": 755.44855,
+          "gain_db": -5.3196335,
+          "q": 2.2,
+          "enabled": true
+        },
+        {
+          "id": "6",
+          "type": "Parametric",
+          "frequency_hz": 1819.1558,
+          "gain_db": -4.497717,
+          "q": 4.0,
+          "enabled": true
+        },
+        {
+          "id": "7",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "8",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        }
+      ],
+      "crossover": {
+        "bandGainAndDelay": {
+          "delay": 0.0,
+          "gain": 0.0,
+          "invert": false
+        },
+        "highPassFilter": {
+          "enable": true,
+          "type": "Butterworth 18dB/oct",
+          "frequency": 200.0
+        },
+        "lowPassFilter": {
+          "enable": false,
+          "type": "Butterworth 6dB/oct",
+          "frequency": 1000.0
+        }
+      },
+      "limiters": {
+        "rms": {
+          "attackTime": 500.0,
+          "enable": true,
+          "releaseTime": 2000.0,
+          "threshold": 19.0
+        },
+        "peak": {
+          "attackTime": 10.0,
+          "enable": true,
+          "releaseTime": 50.0,
+          "threshold": 40.0
+        },
+        "loadMonitor": {
+          "enable": false,
+          "highLimit": 40.0,
+          "lowLimit": 4.0
+        },
+        "pilotToneDetector": {
+          "enable": false,
+          "openLimit": 80.0,
+          "sensitivity": 0.0,
+          "shortLimit": 100.0,
+          "timeElapsedForError": 50.0,
+          "toneFrequency": 20000.0
+        }
+      },
+      "routing": {
+        "inputSelector": {
+          "danteOnRamp": "Analog Input",
+          "mode": "Backup",
+          "primary": "Dante 2",
+          "primaryFader": 0.0,
+          "primaryThreshold": -60.0,
+          "secondary": "None",
+          "secondaryFader": 0.0,
+          "secondaryThreshold": -55.0,
+          "signalGeneratorEnable": false,
+          "signalGeneratorFader": -30.0,
+          "analog1MixFader": 0.0,
+          "analog2MixFader": 0.0,
+          "analog3MixFader": 0.0,
+          "analog4MixFader": 0.0,
+          "analog5MixFader": 0.0,
+          "analog6MixFader": 0.0,
+          "analog7MixFader": 0.0,
+          "analog8MixFader": 0.0,
+          "dante1MixFader": 0.0,
+          "dante2MixFader": 0.0,
+          "dante3MixFader": 0.0,
+          "dante4MixFader": 0.0,
+          "dante5MixFader": 0.0,
+          "dante6MixFader": 0.0,
+          "dante7MixFader": 0.0,
+          "dante8MixFader": 0.0
+        },
+        "output": {
+          "ZoneName": "ZoneName",
+          "enable": true,
+          "hiZHpfEnable": false,
+          "hiZHpfFrequency": 70.0,
+          "hiZLoZ": "LoZ",
+          "name": "Wall 2 HI",
+          "super8": false
+        },
+        "mute": false,
+        "hiZLoZ": "LoZ",
+        "source_channel_number": 4,
+        "source_device_id": "98:89:24:31:DE:D1",
+        "source_version": 2,
+        "source_file": "tuning_files/Embodied Sound tunings/CEDIA 2025/cedia walls hi.json"
+      }
+    }
+  },
+  "change_log": [],
+  "auto_tune_runs": [],
+  "created_at": "2026-04-10T17:03:09"
+}

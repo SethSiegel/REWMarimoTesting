@@ -1,0 +1,368 @@
+{
+  "schema_version": 1,
+  "id": "f8354a89-8e93-5547-ae33-14bc485b95ee",
+  "name": "CES 2026 / 012726 / Material Samples - CES Glass",
+  "parent_profile_id": null,
+  "derived_from_preset_id": null,
+  "mounting_context": "CES Glass",
+  "notes": "Imported from tuning_files/Embodied Sound tunings/CES 2026/012726/Material Samples/CES_Glass_HI.json and tuning_files/Embodied Sound tunings/CES 2026/012726/Material Samples/CES_Glass_LO.json",
+  "tags": [
+    "source:embodied_sound_tunings",
+    "group:ces_2026_/_012726_/_material_samples"
+  ],
+  "measurement_links": [
+    {
+      "kind": "lea_json",
+      "relative_path": "tuning_files/Embodied Sound tunings/CES 2026/012726/Material Samples/CES_Glass_HI.json"
+    },
+    {
+      "kind": "lea_json",
+      "relative_path": "tuning_files/Embodied Sound tunings/CES 2026/012726/Material Samples/CES_Glass_LO.json"
+    }
+  ],
+  "channels": {
+    "1": {
+      "gain_db": -15,
+      "delay_ms": 0,
+      "polarity": "normal",
+      "peq": [
+        {
+          "id": "1",
+          "type": "Parametric",
+          "frequency_hz": 94,
+          "gain_db": -8.90000057220459,
+          "q": 17,
+          "enabled": true
+        },
+        {
+          "id": "2",
+          "type": "Parametric",
+          "frequency_hz": 80,
+          "gain_db": -6.599999904632568,
+          "q": 16.30000114440918,
+          "enabled": true
+        },
+        {
+          "id": "3",
+          "type": "Parametric",
+          "frequency_hz": 117,
+          "gain_db": -6.800000190734863,
+          "q": 16.30000114440918,
+          "enabled": true
+        },
+        {
+          "id": "4",
+          "type": "Parametric",
+          "frequency_hz": 51.044898986816406,
+          "gain_db": -9.90000057220459,
+          "q": 5,
+          "enabled": true
+        },
+        {
+          "id": "5",
+          "type": "Parametric",
+          "frequency_hz": 1000,
+          "gain_db": 0,
+          "q": 4,
+          "enabled": true
+        },
+        {
+          "id": "6",
+          "type": "Parametric",
+          "frequency_hz": 1000,
+          "gain_db": 0,
+          "q": 4,
+          "enabled": true
+        },
+        {
+          "id": "7",
+          "type": "Parametric",
+          "frequency_hz": 1000,
+          "gain_db": 0,
+          "q": 4,
+          "enabled": true
+        },
+        {
+          "id": "8",
+          "type": "Parametric",
+          "frequency_hz": 1000,
+          "gain_db": 0,
+          "q": 4,
+          "enabled": true
+        }
+      ],
+      "crossover": {
+        "bandGainAndDelay": {
+          "gain": 0,
+          "delay": 0,
+          "invert": false
+        },
+        "lowPassFilter": {
+          "enable": true,
+          "type": "Butterworth 24dB/oct",
+          "frequency": 128
+        },
+        "highPassFilter": {
+          "enable": true,
+          "type": "Butterworth 24dB/oct",
+          "frequency": 30
+        }
+      },
+      "limiters": {
+        "rms": {
+          "enable": false,
+          "threshold": 100,
+          "attackTime": 1000,
+          "releaseTime": 5000
+        },
+        "peak": {
+          "enable": false,
+          "threshold": 141,
+          "attackTime": 10,
+          "releaseTime": 100
+        },
+        "loadMonitor": {
+          "enable": false,
+          "highLimit": 40,
+          "lowLimit": 4,
+          "voltageMin": 1
+        },
+        "pilotToneDetector": {
+          "enable": false,
+          "toneFrequency": 20000,
+          "openLimit": 80,
+          "shortLimit": 100,
+          "timeElapsedForError": 50,
+          "sensitivity": 0,
+          "inputEnablePrimary": false,
+          "inputThresholdPrimary": -50,
+          "inputEnableSecondary": false,
+          "inputThresholdSecondary": -50,
+          "CrossoverBypass": false
+        }
+      },
+      "routing": {
+        "inputSelector": {
+          "primary": "Dante 1+2",
+          "primaryFader": -10,
+          "primaryThreshold": -60,
+          "secondary": "None",
+          "secondaryFader": 0,
+          "secondaryThreshold": -55,
+          "mode": "Backup",
+          "signalGeneratorEnable": false,
+          "signalGeneratorFader": -30,
+          "danteOnRamp": "Analog Input",
+          "analog1MixFader": 0,
+          "analog2MixFader": 0,
+          "analog3MixFader": 0,
+          "analog4MixFader": 0,
+          "analog5MixFader": 0,
+          "analog6MixFader": 0,
+          "analog7MixFader": 0,
+          "analog8MixFader": 0,
+          "dante1MixFader": 0,
+          "dante2MixFader": 0,
+          "dante3MixFader": 0,
+          "dante4MixFader": 0,
+          "dante5MixFader": 0,
+          "dante6MixFader": 0,
+          "dante7MixFader": 0,
+          "dante8MixFader": 0
+        },
+        "output": {
+          "name": "Glass LO",
+          "ZoneName": "ZoneName",
+          "subZoneName": "SubZoneName",
+          "enable": true,
+          "faderZoneRange": 80,
+          "faderZoneOffset": 0,
+          "faderZoneAdjust": 0,
+          "super8": false,
+          "hiZLoZ": "LoZ",
+          "hiZHpfEnable": false,
+          "hiZHpfFrequency": 70
+        },
+        "mute": false,
+        "hiZLoZ": "LoZ",
+        "source_channel_number": 1,
+        "source_device_id": null,
+        "source_version": null,
+        "source_file": "tuning_files/Embodied Sound tunings/CES 2026/012726/Material Samples/CES_Glass_LO.json"
+      }
+    },
+    "2": {
+      "gain_db": -12,
+      "delay_ms": 0,
+      "polarity": "normal",
+      "peq": [
+        {
+          "id": "1",
+          "type": "Parametric",
+          "frequency_hz": 215,
+          "gain_db": -8,
+          "q": 6,
+          "enabled": true
+        },
+        {
+          "id": "2",
+          "type": "Parametric",
+          "frequency_hz": 1075,
+          "gain_db": -10,
+          "q": 5.700000286102295,
+          "enabled": true
+        },
+        {
+          "id": "3",
+          "type": "Parametric",
+          "frequency_hz": 297.91265869140625,
+          "gain_db": -7.5,
+          "q": 2.799999952316284,
+          "enabled": true
+        },
+        {
+          "id": "4",
+          "type": "Parametric",
+          "frequency_hz": 145,
+          "gain_db": -6.599999904632568,
+          "q": 4,
+          "enabled": true
+        },
+        {
+          "id": "5",
+          "type": "Parametric",
+          "frequency_hz": 3382.83447265625,
+          "gain_db": -4.77363395690918,
+          "q": 2.5,
+          "enabled": true
+        },
+        {
+          "id": "6",
+          "type": "Parametric",
+          "frequency_hz": 1432.30224609375,
+          "gain_db": -3.5752334594726562,
+          "q": 1.5000001192092896,
+          "enabled": true
+        },
+        {
+          "id": "7",
+          "type": "Parametric",
+          "frequency_hz": 8251.98828125,
+          "gain_db": -5.332889556884766,
+          "q": 2,
+          "enabled": true
+        },
+        {
+          "id": "8",
+          "type": "HP Shelf 12dB/oct",
+          "frequency_hz": 5386.8955078125,
+          "gain_db": 4.814114570617676,
+          "q": 0.6999999284744263,
+          "enabled": true
+        }
+      ],
+      "crossover": {
+        "bandGainAndDelay": {
+          "gain": 0,
+          "delay": 0,
+          "invert": false
+        },
+        "lowPassFilter": {
+          "enable": false,
+          "type": "Butterworth 6dB/oct",
+          "frequency": 1000
+        },
+        "highPassFilter": {
+          "enable": true,
+          "type": "Butterworth 24dB/oct",
+          "frequency": 128
+        }
+      },
+      "limiters": {
+        "rms": {
+          "enable": false,
+          "threshold": 100,
+          "attackTime": 1000,
+          "releaseTime": 5000
+        },
+        "peak": {
+          "enable": false,
+          "threshold": 141,
+          "attackTime": 10,
+          "releaseTime": 100
+        },
+        "loadMonitor": {
+          "enable": false,
+          "highLimit": 40,
+          "lowLimit": 4,
+          "voltageMin": 1
+        },
+        "pilotToneDetector": {
+          "enable": false,
+          "toneFrequency": 20000,
+          "openLimit": 80,
+          "shortLimit": 100,
+          "timeElapsedForError": 50,
+          "sensitivity": 0,
+          "inputEnablePrimary": false,
+          "inputThresholdPrimary": -50,
+          "inputEnableSecondary": false,
+          "inputThresholdSecondary": -50,
+          "CrossoverBypass": false
+        }
+      },
+      "routing": {
+        "inputSelector": {
+          "primary": "Dante 1+2",
+          "primaryFader": -10,
+          "primaryThreshold": -60,
+          "secondary": "None",
+          "secondaryFader": 0,
+          "secondaryThreshold": -55,
+          "mode": "Backup",
+          "signalGeneratorEnable": false,
+          "signalGeneratorFader": -40,
+          "danteOnRamp": "Analog Input",
+          "analog1MixFader": 0,
+          "analog2MixFader": 0,
+          "analog3MixFader": 0,
+          "analog4MixFader": 0,
+          "analog5MixFader": 0,
+          "analog6MixFader": 0,
+          "analog7MixFader": 0,
+          "analog8MixFader": 0,
+          "dante1MixFader": 0,
+          "dante2MixFader": 0,
+          "dante3MixFader": 0,
+          "dante4MixFader": 0,
+          "dante5MixFader": 0,
+          "dante6MixFader": 0,
+          "dante7MixFader": 0,
+          "dante8MixFader": 0
+        },
+        "output": {
+          "name": "Glass HI",
+          "ZoneName": "ZoneName",
+          "subZoneName": "SubZoneName",
+          "enable": true,
+          "faderZoneRange": 80,
+          "faderZoneOffset": 0,
+          "faderZoneAdjust": 0,
+          "super8": false,
+          "hiZLoZ": "LoZ",
+          "hiZHpfEnable": false,
+          "hiZHpfFrequency": 70
+        },
+        "mute": false,
+        "hiZLoZ": "LoZ",
+        "source_channel_number": 2,
+        "source_device_id": null,
+        "source_version": null,
+        "source_file": "tuning_files/Embodied Sound tunings/CES 2026/012726/Material Samples/CES_Glass_HI.json"
+      }
+    }
+  },
+  "change_log": [],
+  "auto_tune_runs": [],
+  "created_at": "2026-04-10T17:03:09"
+}

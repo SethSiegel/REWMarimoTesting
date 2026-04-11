@@ -1,0 +1,340 @@
+{
+  "schema_version": 1,
+  "id": "0da32d6f-e1c9-5f33-8020-60a84c75a6fc",
+  "name": "RX600 - initial rx600 intellistage",
+  "parent_profile_id": null,
+  "derived_from_preset_id": null,
+  "mounting_context": "initial rx600 intellistage",
+  "notes": "Imported from tuning_files/Embodied Sound tunings/RX600/initial rx600 intellistage hi.json and tuning_files/Embodied Sound tunings/RX600/initial rx600 intellistage lo.json",
+  "tags": [
+    "source:embodied_sound_tunings",
+    "group:rx600"
+  ],
+  "measurement_links": [
+    {
+      "kind": "lea_json",
+      "relative_path": "tuning_files/Embodied Sound tunings/RX600/initial rx600 intellistage hi.json"
+    },
+    {
+      "kind": "lea_json",
+      "relative_path": "tuning_files/Embodied Sound tunings/RX600/initial rx600 intellistage lo.json"
+    }
+  ],
+  "channels": {
+    "1": {
+      "gain_db": -10.0,
+      "delay_ms": 0.0,
+      "polarity": "normal",
+      "peq": [
+        {
+          "id": "1",
+          "type": "Parametric",
+          "frequency_hz": 101.913795,
+          "gain_db": 2.3515978,
+          "q": 2.5,
+          "enabled": false
+        },
+        {
+          "id": "2",
+          "type": "Parametric",
+          "frequency_hz": 152.13438,
+          "gain_db": -2.762558,
+          "q": 1.7,
+          "enabled": false
+        },
+        {
+          "id": "3",
+          "type": "Parametric",
+          "frequency_hz": 52.38148,
+          "gain_db": -4.0,
+          "q": 2.5000014,
+          "enabled": false
+        },
+        {
+          "id": "4",
+          "type": "Parametric",
+          "frequency_hz": 44.28049,
+          "gain_db": 2.0,
+          "q": 0.90000004,
+          "enabled": false
+        },
+        {
+          "id": "5",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "6",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "7",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        },
+        {
+          "id": "8",
+          "type": "Parametric",
+          "frequency_hz": 1000.0,
+          "gain_db": 0.0,
+          "q": 4.0,
+          "enabled": false
+        }
+      ],
+      "crossover": {
+        "bandGainAndDelay": {
+          "delay": 0.0,
+          "gain": 0.0,
+          "invert": false
+        },
+        "highPassFilter": {
+          "enable": true,
+          "type": "Butterworth 24dB/oct",
+          "frequency": 30.0
+        },
+        "lowPassFilter": {
+          "enable": true,
+          "type": "Butterworth 24dB/oct",
+          "frequency": 179.96696
+        }
+      },
+      "limiters": {
+        "rms": {
+          "attackTime": 1000.0,
+          "enable": true,
+          "releaseTime": 5000.0,
+          "threshold": 100.0
+        },
+        "peak": {
+          "attackTime": 10.0,
+          "enable": true,
+          "releaseTime": 100.0,
+          "threshold": 100.0
+        },
+        "loadMonitor": {
+          "enable": false,
+          "highLimit": 40.0,
+          "lowLimit": 4.0
+        },
+        "pilotToneDetector": {
+          "enable": false,
+          "openLimit": 80.0,
+          "sensitivity": 0.0,
+          "shortLimit": 100.0,
+          "timeElapsedForError": 50.0,
+          "toneFrequency": 20000.0
+        }
+      },
+      "routing": {
+        "inputSelector": {
+          "danteOnRamp": "Analog Input",
+          "mode": "Backup",
+          "primary": "Analog 1+2",
+          "primaryFader": -0.1,
+          "primaryThreshold": -60.0,
+          "secondary": "Analog 1",
+          "secondaryFader": 0.0,
+          "secondaryThreshold": -55.0,
+          "signalGeneratorEnable": false,
+          "signalGeneratorFader": -30.0,
+          "analog1MixFader": 0.0,
+          "analog2MixFader": 0.0,
+          "analog3MixFader": 0.0,
+          "analog4MixFader": 0.0,
+          "dante1MixFader": 0.0,
+          "dante2MixFader": 0.0,
+          "dante3MixFader": 0.0,
+          "dante4MixFader": 0.0,
+          "dante5MixFader": 0.0,
+          "dante6MixFader": 0.0,
+          "dante7MixFader": 0.0,
+          "dante8MixFader": 0.0
+        },
+        "output": {
+          "ZoneName": "ZoneName",
+          "enable": true,
+          "hiZHpfEnable": false,
+          "hiZHpfFrequency": 70.0,
+          "hiZLoZ": "LoZ",
+          "name": "OUT 1 LO",
+          "super8": false
+        },
+        "mute": false,
+        "hiZLoZ": "LoZ",
+        "source_channel_number": 1,
+        "source_device_id": "B8:94:D9:8B:3A:C9",
+        "source_version": 2,
+        "source_file": "tuning_files/Embodied Sound tunings/RX600/initial rx600 intellistage lo.json"
+      }
+    },
+    "2": {
+      "gain_db": -10.0,
+      "delay_ms": 0.0,
+      "polarity": "normal",
+      "peq": [
+        {
+          "id": "1",
+          "type": "Parametric",
+          "frequency_hz": 239.15128,
+          "gain_db": -7.785389,
+          "q": 3.0,
+          "enabled": false
+        },
+        {
+          "id": "2",
+          "type": "Parametric",
+          "frequency_hz": 439.00607,
+          "gain_db": -3.1278553,
+          "q": 2.4,
+          "enabled": false
+        },
+        {
+          "id": "3",
+          "type": "Parametric",
+          "frequency_hz": 3030.906,
+          "gain_db": -6.232876,
+          "q": 2.1,
+          "enabled": false
+        },
+        {
+          "id": "4",
+          "type": "Parametric",
+          "frequency_hz": 2340.5522,
+          "gain_db": -1.6666679,
+          "q": 1.6,
+          "enabled": false
+        },
+        {
+          "id": "5",
+          "type": "Parametric",
+          "frequency_hz": 634.50214,
+          "gain_db": -7.5114155,
+          "q": 2.5,
+          "enabled": false
+        },
+        {
+          "id": "6",
+          "type": "HP Shelf 12dB/oct",
+          "frequency_hz": 7887.0405,
+          "gain_db": 5.7305927,
+          "q": 1.0,
+          "enabled": false
+        },
+        {
+          "id": "7",
+          "type": "Parametric",
+          "frequency_hz": 1036.8517,
+          "gain_db": -1.9406395,
+          "q": 0.7,
+          "enabled": false
+        },
+        {
+          "id": "8",
+          "type": "Parametric",
+          "frequency_hz": 1749.9755,
+          "gain_db": -5.3,
+          "q": 3.0,
+          "enabled": false
+        }
+      ],
+      "crossover": {
+        "bandGainAndDelay": {
+          "delay": 0.0,
+          "gain": 0.0,
+          "invert": false
+        },
+        "highPassFilter": {
+          "enable": true,
+          "type": "Butterworth 24dB/oct",
+          "frequency": 180.0
+        },
+        "lowPassFilter": {
+          "enable": false,
+          "type": "Butterworth 6dB/oct",
+          "frequency": 1000.0
+        }
+      },
+      "limiters": {
+        "rms": {
+          "attackTime": 1000.0,
+          "enable": true,
+          "releaseTime": 5000.0,
+          "threshold": 100.0
+        },
+        "peak": {
+          "attackTime": 10.0,
+          "enable": true,
+          "releaseTime": 100.0,
+          "threshold": 100.0
+        },
+        "loadMonitor": {
+          "enable": false,
+          "highLimit": 40.0,
+          "lowLimit": 4.0
+        },
+        "pilotToneDetector": {
+          "enable": false,
+          "openLimit": 80.0,
+          "sensitivity": 0.0,
+          "shortLimit": 100.0,
+          "timeElapsedForError": 50.0,
+          "toneFrequency": 20000.0
+        }
+      },
+      "routing": {
+        "inputSelector": {
+          "danteOnRamp": "Analog Input",
+          "mode": "Backup",
+          "primary": "Analog 1+2",
+          "primaryFader": 0.0,
+          "primaryThreshold": -60.0,
+          "secondary": "Analog 1",
+          "secondaryFader": 0.0,
+          "secondaryThreshold": -55.0,
+          "signalGeneratorEnable": false,
+          "signalGeneratorFader": -35.0,
+          "analog1MixFader": 0.0,
+          "analog2MixFader": 0.0,
+          "analog3MixFader": 0.0,
+          "analog4MixFader": 0.0,
+          "dante1MixFader": 0.0,
+          "dante2MixFader": 0.0,
+          "dante3MixFader": 0.0,
+          "dante4MixFader": 0.0,
+          "dante5MixFader": 0.0,
+          "dante6MixFader": 0.0,
+          "dante7MixFader": 0.0,
+          "dante8MixFader": 0.0
+        },
+        "output": {
+          "ZoneName": "ZoneName",
+          "enable": true,
+          "hiZHpfEnable": false,
+          "hiZHpfFrequency": 70.0,
+          "hiZLoZ": "LoZ",
+          "name": "OUT 1 HI",
+          "super8": false
+        },
+        "mute": false,
+        "hiZLoZ": "LoZ",
+        "source_channel_number": 2,
+        "source_device_id": "B8:94:D9:8B:3A:C9",
+        "source_version": 2,
+        "source_file": "tuning_files/Embodied Sound tunings/RX600/initial rx600 intellistage hi.json"
+      }
+    }
+  },
+  "change_log": [],
+  "auto_tune_runs": [],
+  "created_at": "2026-04-10T17:03:09"
+}
