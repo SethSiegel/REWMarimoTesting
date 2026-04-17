@@ -14,7 +14,3 @@ launcher/dist/
 launcher/build/
 launcher/launcher_error.log
 launcher/*.spec
-tuning_files/*
-!tuning_files/presets/
-!tuning_files/profiles/
-!tuning_files/tuning_exports/
