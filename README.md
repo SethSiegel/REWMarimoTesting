@@ -89,6 +89,7 @@ MULTIMETER_IP=192.168.1.202
 
 Notes:
 - `REW_DATA_DIR` is optional. If omitted or not writable, the app uses repo-local `data/`.
+- For shared lab storage on Windows SMB, use a UNC path such as `\\LAB-SERVER\REW_Data`.
 - `MULTIMETER_IP` is used by the SDM30xx notebook as default IP.
 
 ### 4. Start Postgres (optional but recommended for dashboard features)
@@ -196,6 +197,92 @@ This repo assumes an existing schema with at least:
 - `measurement_file`
 
 `import_local_files.py` and notebook connect flows will add metric columns to `measurement` if missing, but full base schema creation is not bundled in this repo.
+
+## Using Windows SMB For Shared Measurement Files
+
+This project supports multi-computer collaboration by storing measurement files on a shared SMB path and indexing those files into Postgres.
+
+Important distinction:
+- SMB is used for shared file storage (`.mdat`, `.json`, etc.).
+- PostgreSQL is still accessed over TCP via `POSTGRES_HOST` and `POSTGRES_PORT`.
+
+### How this is implemented in this repo
+
+1. `project_paths.get_data_root()` checks `REW_DATA_DIR`.
+2. If `REW_DATA_DIR` is set and writable, that path becomes the active shared data root.
+3. In `REW Metadata Dashboard`, `Sync and Import` performs:
+   - local sync: copy local `data/` exports to shared root
+   - shared import: ingest shared-root files into Postgres
+4. All users pointing `REW_DATA_DIR` at the same SMB folder can read/write the same measurement pool.
+
+### Server-side setup (one-time)
+
+On the machine hosting shared files:
+
+1. Create a folder for shared data, for example:
+   - `D:\REW_Shared_Data`
+2. Share it over SMB with a stable path, for example:
+   - `\\LAB-SERVER\REW_Data`
+3. Set permissions so project users can:
+   - read files
+   - create/update files
+   - create subfolders
+4. Ensure SMB is reachable on the network:
+   - same LAN/VPN
+   - firewall allows SMB (TCP 445) for trusted networks
+5. Create or confirm folder structure:
+   - `mdat`
+   - `json`
+   - `txt`
+   - `stepped-sine`
+
+### New user setup (Windows)
+
+1. Connect to the SMB share in File Explorer:
+   - enter `\\LAB-SERVER\REW_Data` in the address bar
+2. Authenticate with credentials that have write access.
+3. Optional: map a persistent drive letter:
+
+```powershell
+net use R: \\LAB-SERVER\REW_Data /persistent:yes
+```
+
+4. In this repo's `.env`, set:
+
+```env
+REW_DATA_DIR=\\LAB-SERVER\REW_Data
+POSTGRES_HOST=LAB-SERVER
+POSTGRES_PORT=5432
+POSTGRES_DB=testingdb-postgres
+POSTGRES_USER=rew_app
+POSTGRES_PASSWORD=change_me
+```
+
+5. Launch the dashboard:
+
+```bash
+uv run marimo run notebooks --sandbox
+```
+
+6. Open `REW Metadata Dashboard` and click `Sync and Import`.
+
+### Quick connection checks
+
+From PowerShell:
+
+```powershell
+Test-Path "\\LAB-SERVER\REW_Data"
+```
+
+If that returns `True`, SMB path access is working for this user session.
+
+### Recommended team workflow
+
+1. Export measurements from `REW Sweep + Export Tool`.
+2. Run `Sync and Import` in `REW Metadata Dashboard`.
+3. Analyze datasets from `REW Statistical Analysis Dashboard`.
+
+This keeps file storage centralized via SMB and metadata searchable via Postgres.
 
 ## Project Layout
 
