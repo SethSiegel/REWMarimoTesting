@@ -1,5 +1,4 @@
 data/
-.env
 pgdata/
 __pycache__/
 .DS_Store

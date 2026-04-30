@@ -195,9 +195,26 @@ def _(clear_rew_result_state):
     if _clear_status == "idle":
         clear_rew_status_widget = mo.md(_clear_rew_result.get("note", ""))
     elif _clear_status == "failed":
+        _note = _clear_rew_result.get("note")
+        _error = _clear_rew_result.get("error")
+        _response = _clear_rew_result.get("response")
+        _available = _clear_rew_result.get("available_commands")
+        _details = []
+        if _note:
+            _details.append(_note)
+        if _error and _error not in _details:
+            _details.append(_error)
+        if _response:
+            _details.append(f"Response: `{_response}`")
+        if _available:
+            _details.append(
+                "Available commands: "
+                + ", ".join(str(c) for c in _available[:10])
+            )
+        _detail_text = "  \n".join(_details) if _details else "Unknown error"
         clear_rew_status_widget = mo.md(
             "<span style='color: red; font-weight: 700;'>Clear all failed.</span>"
-            f"  \n{_clear_rew_result.get('note', 'Unknown error')}"
+            f"  \n{_detail_text}"
         )
     else:
         clear_rew_status_widget = mo.md(
@@ -657,6 +674,7 @@ def _(rewA):
 @app.cell
 def _(smoothing_choices_raw):
     smoothing_options = ["Default"]
+    smoothing_label_to_value = {"Default": None}
     smoothing_choices_list = smoothing_choices_raw
     if isinstance(smoothing_choices_list, dict):
         smoothing_choices_list = smoothing_choices_list.get(
@@ -666,18 +684,24 @@ def _(smoothing_choices_raw):
     if isinstance(smoothing_choices_list, list):
         for item in smoothing_choices_list:
             if isinstance(item, dict):
-                value = item.get("value")
-                if value is not None:
-                    smoothing_options.append(str(value))
+                value = item.get("value", item.get("id"))
+                label = item.get("label", item.get("name", value))
+                if label is None and value is None:
+                    continue
+                label = str(label) if label is not None else str(value)
+                smoothing_options.append(label)
+                smoothing_label_to_value[label] = value
             else:
-                smoothing_options.append(str(item))
+                label = str(item)
+                smoothing_options.append(label)
+                smoothing_label_to_value[label] = item
     smoothing_select = mo.ui.dropdown(
         options=smoothing_options,
         value="Default",
         label="Smoothing",
     )
     smoothing_select
-    return (smoothing_select,)
+    return smoothing_label_to_value, smoothing_select
 
 
 @app.cell
@@ -709,13 +733,21 @@ def _(measNum, measurements_all):
 
 
 @app.cell
-def _(export_json_name_value, measNum, measurement, rewA, smoothing_select):
+def _(
+    export_json_name_value,
+    measNum,
+    measurement,
+    rewA,
+    smoothing_label_to_value,
+    smoothing_select,
+):
     response = {}
     selected_smoothing = None
     if rewA is not None and measNum and measurement:
-        selected_smoothing = smoothing_select.value
-        if selected_smoothing == "Default":
-            selected_smoothing = None
+        smoothing_label = smoothing_select.value if smoothing_select else "Default"
+        selected_smoothing = smoothing_label_to_value.get(smoothing_label)
+        if selected_smoothing is not None:
+            selected_smoothing = str(selected_smoothing)
         response = rewA.get_measurements_id_freq_response(
             measNum,
             smoothing=selected_smoothing,
@@ -754,7 +786,11 @@ def _(dataH, parent_mdat):
 
 @app.cell
 def _(measurement):
-    _ = measurement.get("rewVersion", "") if isinstance(measurement, dict) else ""
+    _version = measurement.get("rewVersion", "") if isinstance(measurement, dict) else ""
+    if _version:
+        mo.md(f"REW version (from measurement): `{_version}`")
+    else:
+        mo.md("REW version (from measurement): unavailable")
     return
 
 

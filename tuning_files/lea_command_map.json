@@ -1,0 +1,65 @@
+﻿{
+  "schema_version": 1,
+  "description": "LEA WebSocket command map for tuning payloads. Update supported fields to match your LEA API.",
+  "channels": {
+    "gain_db": {
+      "supported": true,
+      "url": "amp/channels/{channel}/levels",
+      "method": "set",
+      "param": "fader",
+      "range": {"min": -80.0, "max": 12.0}
+    },
+    "delay_ms": {
+      "supported": false,
+      "url": "amp/channels/{channel}/output",
+      "method": "set",
+      "param": "delayMs",
+      "range": {"min": 0.0, "max": 200.0}
+    },
+    "polarity": {
+      "supported": false,
+      "url": "amp/channels/{channel}/output",
+      "method": "set",
+      "param": "polarity",
+      "enum": ["normal", "inverted"]
+    },
+    "peq": {
+      "supported": false,
+      "url": "amp/channels/{channel}/peq",
+      "method": "set",
+      "param": "bands",
+      "band_schema": {
+        "freq_hz": {"min": 10.0, "max": 20000.0},
+        "gain_db": {"min": -24.0, "max": 24.0},
+        "q": {"min": 0.1, "max": 20.0},
+        "type": ["peaking", "low_shelf", "high_shelf"],
+        "enabled": [true, false]
+      }
+    },
+    "crossover": {
+      "supported": false,
+      "url": "amp/channels/{channel}/crossover",
+      "method": "set",
+      "param": "config"
+    },
+    "limiters": {
+      "supported": false,
+      "url": "amp/channels/{channel}/limiters",
+      "method": "set",
+      "param": "config"
+    },
+    "routing": {
+      "supported": false,
+      "url": "amp/channels/{channel}/routing",
+      "method": "set",
+      "param": "config"
+    },
+    "mute": {
+      "supported": true,
+      "url": "amp/channels/{channel}/output",
+      "method": "set",
+      "param": "mute",
+      "enum": [true, false]
+    }
+  }
+}

@@ -215,26 +215,26 @@ def _():
 def _():
     import_local_root = repo_root / "data"
     import_shared_root = get_data_root()
-    copy_to_shared = mo.ui.checkbox(
-        value=True,
-        label="Copy local files to shared data folder (REW_DATA_DIR)",
-    )
-    mo.md(rf"**Importing from:** `{str(import_local_root)}`")
+    return import_local_root, import_shared_root
+
+
+@app.cell
+def _(import_local_root, import_shared_root):
+    mo.md(rf"**Local data folder:** `{str(import_local_root)}`")
     mo.md(rf"**Shared data folder:** `{str(import_shared_root)}`")
-    copy_to_shared
-    return copy_to_shared, import_local_root, import_shared_root
+    mo.md("Syncs local files to shared, then imports from shared into Postgres.")
+    return
 
 
 @app.cell
 def _():
-    import_button = mo.ui.run_button(label="Import Local Files")
+    import_button = mo.ui.run_button(label="Sync and Import")
     import_button
     return (import_button,)
 
 
 @app.cell
 def _(
-    copy_to_shared,
     db_host,
     db_name,
     db_pass,
@@ -249,8 +249,19 @@ def _(
     unit_number_filter,
     unit_type_filter,
 ):
-    mo.stop(not import_button.value, mo.md("Click **Import Local Files** to run."))
-    copy_root = import_shared_root if copy_to_shared.value else None
+    mo.stop(not import_button.value, mo.md("Click **Sync and Import** to run."))
+    local_mdat = list((import_local_root / "mdat").glob("*.mdat"))
+    local_json = list((import_local_root / "json").rglob("*.json"))
+    shared_mdat = list((import_shared_root / "mdat").glob("*.mdat"))
+    shared_json = list((import_shared_root / "json").rglob("*.json"))
+    if not local_mdat and not local_json and not shared_mdat and not shared_json:
+        mo.stop(
+            True,
+            mo.md(
+                "No files found in local or shared data folders. "
+                "Check your export path and REW_DATA_DIR."
+            ),
+        )
     _conn = psycopg.connect(
         host=db_host.value.strip(),
         port=int(db_port.value.strip()),
@@ -260,7 +271,15 @@ def _(
     )
     _conn.autocommit = True
     try:
-        import_files(conn=_conn, data_root_override=import_local_root, copy_to_shared_root=copy_root)
+        # Step 1: sync local -> shared (copy only; also indexes local paths)
+        if local_mdat or local_json:
+            import_files(
+                conn=_conn,
+                data_root_override=import_local_root,
+                copy_to_shared_root=import_shared_root,
+            )
+        # Step 2: import from shared server path
+        import_files(conn=_conn, data_root_override=import_shared_root)
         _query = """
             SELECT
                 COALESCE(

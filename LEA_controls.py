@@ -50,6 +50,45 @@ class Lea_Settings():
         message = json.dumps(message_dictionary)
         return message
 
+    def build_set_command(self, url: str, params: dict, request_id: int = 1):
+        """Build a LEA set command payload."""
+        return {
+            "leaApi": "1.0",
+            "url": url,
+            "method": "set",
+            "params": params,
+            "id": request_id,
+        }
+
+    def send_command(self, Lea_address: str, payload, timeout_seconds: float = 2.0):
+        """Send a raw command payload (dict or JSON string)."""
+        if isinstance(payload, dict):
+            message = json.dumps(payload)
+        else:
+            message = payload
+        return self.websocket_connect(
+            Lea_address,
+            message,
+            timeout_seconds=timeout_seconds,
+        )
+
+    def send_batch(self, Lea_address: str, payloads, timeout_seconds: float = 2.0):
+        """Send a list of payloads and return responses."""
+        responses = []
+        if payloads is None:
+            return responses
+        for payload in payloads:
+            try:
+                response = self.send_command(
+                    Lea_address,
+                    payload,
+                    timeout_seconds=timeout_seconds,
+                )
+                responses.append({"payload": payload, "response": response, "error": None})
+            except Exception as exc:
+                responses.append({"payload": payload, "response": None, "error": str(exc)})
+        return responses
+
     def return_amp_name(self, Lea_address: str):
         amp_name_string = self.websocket_connect(Lea_address,
                                                  self.amp_deviceInfo())
@@ -134,6 +173,62 @@ class Lea_Settings():
                       "id": 1}
         message = json.dumps(dictionary)
         return message
+
+    def set_channel_gain(self, channel: int, gain_db: float, request_id: int = 1):
+        return self.build_set_command(
+            f"amp/channels/{int(channel)}/levels",
+            {"fader": float(gain_db)},
+            request_id=request_id,
+        )
+
+    def set_channel_delay(self, channel: int, delay_ms: float, request_id: int = 1):
+        return self.build_set_command(
+            f"amp/channels/{int(channel)}/output",
+            {"delayMs": float(delay_ms)},
+            request_id=request_id,
+        )
+
+    def set_channel_polarity(self, channel: int, polarity: str, request_id: int = 1):
+        return self.build_set_command(
+            f"amp/channels/{int(channel)}/output",
+            {"polarity": str(polarity)},
+            request_id=request_id,
+        )
+
+    def set_channel_peq(self, channel: int, bands, request_id: int = 1):
+        return self.build_set_command(
+            f"amp/channels/{int(channel)}/peq",
+            {"bands": bands},
+            request_id=request_id,
+        )
+
+    def set_channel_crossover(self, channel: int, config, request_id: int = 1):
+        return self.build_set_command(
+            f"amp/channels/{int(channel)}/crossover",
+            {"config": config},
+            request_id=request_id,
+        )
+
+    def set_channel_limiter(self, channel: int, config, request_id: int = 1):
+        return self.build_set_command(
+            f"amp/channels/{int(channel)}/limiters",
+            {"config": config},
+            request_id=request_id,
+        )
+
+    def set_channel_routing(self, channel: int, config, request_id: int = 1):
+        return self.build_set_command(
+            f"amp/channels/{int(channel)}/routing",
+            {"config": config},
+            request_id=request_id,
+        )
+
+    def set_channel_mute(self, channel: int, mute: bool, request_id: int = 1):
+        return self.build_set_command(
+            f"amp/channels/{int(channel)}/output",
+            {"mute": bool(mute)},
+            request_id=request_id,
+        )
 
     def volume(self):
         ''' Function to set the volume to -20 dB
